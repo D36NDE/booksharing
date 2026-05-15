@@ -1,0 +1,54 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+    <!-- Formular zum Hinzufügen -->
+    <div class="glass" style="flex: 1; min-width: 300px; padding: 2rem; align-self: flex-start;">
+        <h2>Neues Buch anbieten</h2>
+        <form method="POST" action="{{ url_for('my_books') }}">
+            <div class="form-group">
+                <label for="title">Titel des Buches</label>
+                <input type="text" id="title" name="title" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="author">Autor</label>
+                <input type="text" id="author" name="author" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="condition">Zustand</label>
+                <select id="condition" name="condition" required>
+                    <option value="Wie neu">Wie neu</option>
+                    <option value="Sehr gut">Sehr gut</option>
+                    <option value="Gut">Gut</option>
+                    <option value="Akzeptabel">Akzeptabel</option>
+                </select>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Buch hinzufügen</button>
+        </form>
+    </div>
+
+    <!-- Eigene Bücher Liste -->
+    <div style="flex: 2; min-width: 300px;">
+        <h2>Meine angebotenen Bücher</h2>
+        <div class="grid" style="margin-top: 1rem;">
+            {% for book in books %}
+            <div class="card glass">
+                <h3>{{ book.title }}</h3>
+                <p>von {{ book.author }}</p>
+                
+                <div style="margin-top: 1rem;">
+                    <span class="badge badge-warning">Status: {{ book.status }}</span>
+                </div>
+            </div>
+            {% else %}
+            <div class="glass" style="padding: 2rem; text-align: center; grid-column: 1 / -1;">
+                <p>Du hast noch keine Bücher hinzugefügt.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
