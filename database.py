@@ -1,7 +1,8 @@
 import sqlite3
 import os
 
-DB_FILE = 'booksharing.db'
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_FILE = os.path.join(BASE_DIR, 'booksharing.db')
 
 def get_db_connection():
     conn = sqlite3.connect(DB_FILE)
