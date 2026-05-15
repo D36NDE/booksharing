@@ -1,0 +1,79 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="grid" style="grid-template-columns: 1fr 1fr; gap: 2rem;">
+
+    <!-- Eingehende Anfragen -->
+    <div class="glass" style="padding: 2rem; align-self: flex-start;">
+        <h2>Eingehende Anfragen</h2>
+        <p style="margin-bottom: 1.5rem;">Andere Nutzer möchten deine Bücher haben.</p>
+        
+        <ul class="request-list">
+            {% for req in incoming %}
+            <li class="glass" style="padding: 1rem; margin-bottom: 1rem; border-left: 4px solid var(--secondary);">
+                <div style="margin-bottom: 1rem;">
+                    <strong>{{ req.requester_name }}</strong> möchte dein Buch:<br>
+                    <span style="color: var(--primary); font-weight: 600;">"{{ req.target_title }}"</span><br>
+                    und bietet dir dafür:<br>
+                    <span style="color: var(--success); font-weight: 600;">"{{ req.offered_title }}"</span>
+                </div>
+                
+                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                    <span class="badge badge-warning" style="margin-right: auto; align-self: center;">Status: {{ req.status }}</span>
+                    {% if req.status == 'PENDING' %}
+                    <form method="POST" action="{{ url_for('requests_page') }}" style="display: inline;">
+                        <input type="hidden" name="request_id" value="{{ req.id }}">
+                        <button type="submit" name="action" value="accept" class="btn btn-primary" style="padding: 0.4rem 1rem;">Annehmen</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('requests_page') }}" style="display: inline;">
+                        <input type="hidden" name="request_id" value="{{ req.id }}">
+                        <button type="submit" name="action" value="reject" class="btn btn-secondary" style="padding: 0.4rem 1rem;">Ablehnen</button>
+                    </form>
+                    {% elif req.status == 'ACCEPTED' and req.requester_email %}
+                    <span style="font-size: 0.875rem; color: var(--text-color);">
+                        Kontakt: <a href="mailto:{{ req.requester_email }}">{{ req.requester_email }}</a>
+                    </span>
+                    {% endif %}
+                </div>
+            </li>
+            {% else %}
+            <li style="color: var(--text-muted);">Keine eingehenden Anfragen.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Ausgehende Anfragen -->
+    <div class="glass" style="padding: 2rem; align-self: flex-start;">
+        <h2>Deine gestellten Anfragen</h2>
+        <p style="margin-bottom: 1.5rem;">Bücher, die du von anderen haben möchtest.</p>
+        
+        <ul class="request-list">
+            {% for req in outgoing %}
+            <li class="glass" style="padding: 1rem; margin-bottom: 1rem; border-left: 4px solid var(--primary);">
+                <div style="margin-bottom: 1rem;">
+                    Du hast bei <strong>{{ req.target_owner_name }}</strong> angefragt für:<br>
+                    <span style="color: var(--primary); font-weight: 600;">"{{ req.target_title }}"</span><br>
+                    und im Gegenzug geboten:<br>
+                    <span style="color: var(--secondary); font-weight: 600;">"{{ req.offered_title }}"</span>
+                </div>
+                
+                <div style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                    <span class="badge 
+                        {% if req.status == 'ACCEPTED' %}badge-success{% elif req.status == 'REJECTED' %}badge-danger{% else %}badge-warning{% endif %}">
+                        Status: {{ req.status }}
+                    </span>
+                    {% if req.status == 'ACCEPTED' and req.target_owner_email %}
+                    <span style="font-size: 0.875rem; color: var(--text-color);">
+                        Kontakt: <a href="mailto:{{ req.target_owner_email }}">{{ req.target_owner_email }}</a>
+                    </span>
+                    {% endif %}
+                </div>
+            </li>
+            {% else %}
+            <li style="color: var(--text-muted);">Du hast noch keine Anfragen gestellt.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+</div>
+{% endblock %}
