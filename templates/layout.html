@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookSharing - Bücher tauschen</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    {% if g.user %}
+    <nav class="glass">
+        <a href="{{ url_for('index') }}" class="brand">Book<span>Sharing</span></a>
+        <ul>
+            <li><a href="{{ url_for('index') }}">Entdecken</a></li>
+            <li><a href="{{ url_for('my_books') }}">Meine Bücher</a></li>
+            <li><a href="{{ url_for('requests_page') }}">Anfragen</a></li>
+            <li><a href="{{ url_for('logout') }}">Logout ({{ g.user.username }})</a></li>
+        </ul>
+    </nav>
+    {% endif %}
+
+    <main class="container fade-in">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+</body>
+</html>
