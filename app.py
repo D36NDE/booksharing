@@ -1,9 +1,25 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, g
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 import database
+import os
+import uuid
 
 app = Flask(__name__)
 app.secret_key = 'super_secret_dev_key_for_booksharing'
+
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static/uploads')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024 # 5 MB limit
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Ensure upload directory exists
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # --- Database Hook ---
 @app.before_request
@@ -73,7 +89,7 @@ def index():
         
     # Get all available books that don't belong to the user
     books = g.db.execute('''
-        SELECT b.id, b.title, b.author, b.condition, u.username as owner_name 
+        SELECT b.id, b.title, b.author, b.condition, b.image_filename, u.username as owner_name 
         FROM books b 
         JOIN users u ON b.owner_id = u.id 
         WHERE b.owner_id != ? AND b.status = 'AVAILABLE'
@@ -91,9 +107,18 @@ def my_books():
         author = request.form.get('author')
         condition = request.form.get('condition')
         
+        image_filename = None
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename != '' and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                unique_filename = f"{uuid.uuid4().hex}_{filename}"
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
+                image_filename = unique_filename
+        
         if title and author and condition:
-            g.db.execute('INSERT INTO books (title, author, condition, owner_id) VALUES (?, ?, ?, ?)',
-                         (title, author, condition, g.user['id']))
+            g.db.execute('INSERT INTO books (title, author, condition, owner_id, image_filename) VALUES (?, ?, ?, ?, ?)',
+                         (title, author, condition, g.user['id'], image_filename))
             g.db.commit()
             flash('Buch erfolgreich hinzugefügt!', 'success')
         else:

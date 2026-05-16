@@ -32,6 +32,7 @@ def init_db():
             condition TEXT NOT NULL,
             owner_id INTEGER NOT NULL,
             status TEXT DEFAULT 'AVAILABLE',
+            image_filename TEXT,
             FOREIGN KEY (owner_id) REFERENCES users (id)
         )
     ''')

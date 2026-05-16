@@ -5,17 +5,17 @@
     <!-- Formular zum Hinzufügen -->
     <div class="glass" style="flex: 1; min-width: 300px; padding: 2rem; align-self: flex-start;">
         <h2>Neues Buch anbieten</h2>
-        <form method="POST" action="{{ url_for('my_books') }}">
+        <form method="POST" action="{{ url_for('my_books') }}" enctype="multipart/form-data">
             <div class="form-group">
                 <label for="title">Titel des Buches</label>
                 <input type="text" id="title" name="title" required>
             </div>
-            
+
             <div class="form-group">
                 <label for="author">Autor</label>
                 <input type="text" id="author" name="author" required>
             </div>
-            
+
             <div class="form-group">
                 <label for="condition">Zustand</label>
                 <select id="condition" name="condition" required>
@@ -25,7 +25,12 @@
                     <option value="Akzeptabel">Akzeptabel</option>
                 </select>
             </div>
-            
+
+            <div class="form-group">
+                <label for="image">Buchbild (optional)</label>
+                <input type="file" id="image" name="image" accept="image/*" style="padding: 0.5rem;">
+            </div>
+
             <button type="submit" class="btn btn-primary" style="width: 100%;">Buch hinzufügen</button>
         </form>
     </div>
@@ -36,9 +41,12 @@
         <div class="grid" style="margin-top: 1rem;">
             {% for book in books %}
             <div class="card glass">
+                {% if book.image_filename %}
+                <img src="{{ url_for('static', filename='uploads/' + book.image_filename) }}"
+                    alt="Bild von {{ book.title }}" class="book-image">
+                {% endif %}
                 <h3>{{ book.title }}</h3>
                 <p>von {{ book.author }}</p>
-                
                 <div style="margin-top: 1rem;">
                     <span class="badge badge-warning">Status: {{ book.status }}</span>
                 </div>

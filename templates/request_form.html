@@ -3,9 +3,15 @@
 {% block content %}
 <div class="glass" style="max-width: 600px; margin: 0 auto; padding: 2rem;">
     <h2>Tauschanfrage stellen</h2>
-    
-    <div style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border-left: 4px solid var(--primary);">
+
+    <div
+        style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border-left: 4px solid var(--primary);">
         <p>Du möchtest:</p>
+        {% if target_book.image_filename %}
+        <img src="{{ url_for('static', filename='uploads/' + target_book.image_filename) }}"
+            alt="Bild von {{ target_book.title }}" class="book-image"
+            style="max-height: 150px; object-fit: contain; margin-top: 1rem;">
+        {% endif %}
         <h3 style="margin-top: 0.5rem; margin-bottom: 0;">{{ target_book.title }}</h3>
         <p style="font-size: 0.875rem;">von {{ target_book.author }}</p>
     </div>
@@ -20,13 +26,15 @@
                 {% endfor %}
             </select>
             {% if not my_books %}
-            <p style="color: var(--error); margin-top: 0.5rem; font-size: 0.875rem;">Du musst zuerst ein eigenes Buch hinzufügen, bevor du tauschen kannst!</p>
+            <p style="color: var(--error); margin-top: 0.5rem; font-size: 0.875rem;">Du musst zuerst ein eigenes Buch
+                hinzufügen, bevor du tauschen kannst!</p>
             {% endif %}
         </div>
-        
+
         <div class="button-group">
             <a href="{{ url_for('index') }}" class="btn btn-secondary" style="flex: 1;">Abbrechen</a>
-            <button type="submit" class="btn btn-primary" style="flex: 1;" {% if not my_books %}disabled{% endif %}>Anfrage senden</button>
+            <button type="submit" class="btn btn-primary" style="flex: 1;" {% if not my_books %}disabled{% endif
+                %}>Anfrage senden</button>
         </div>
     </form>
 </div>
