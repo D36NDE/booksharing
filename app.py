@@ -12,7 +12,7 @@ UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024 # 5 MB limit
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 MB limit
 
 def allowed_file(filename):
     return '.' in filename and \
