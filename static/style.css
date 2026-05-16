@@ -294,6 +294,12 @@ input:focus, select:focus {
   justify-content: space-between;
 }
 
+.split-layout {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
 /* Responsive Design / Mobile View */
 @media (max-width: 768px) {
   .container {
@@ -325,6 +331,11 @@ input:focus, select:focus {
     grid-template-columns: 1fr;
   }
 
+  .split-layout {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
   .request-item {
     flex-direction: column;
     align-items: flex-start;
@@ -339,9 +350,9 @@ input:focus, select:focus {
     flex-direction: column;
   }
 
-  .glass[style*="max-width: 400px"] {
-    margin: 2rem 1rem !important;
+  .glass[style*="max-width"] {
+    margin: 2rem 0 !important;
     padding: 1.5rem !important;
-    max-width: auto !important;
+    max-width: 100% !important;
   }
 }

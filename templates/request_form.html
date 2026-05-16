@@ -24,7 +24,7 @@
             {% endif %}
         </div>
         
-        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+        <div class="button-group">
             <a href="{{ url_for('index') }}" class="btn btn-secondary" style="flex: 1;">Abbrechen</a>
             <button type="submit" class="btn btn-primary" style="flex: 1;" {% if not my_books %}disabled{% endif %}>Anfrage senden</button>
         </div>
