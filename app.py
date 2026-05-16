@@ -219,5 +219,9 @@ def requests_page():
     
     return render_template('requests.html', incoming=incoming_requests, outgoing=outgoing_requests)
 
+@app.route('/impressum')
+def impressum():
+    return render_template('impressum.html')
+
 if __name__ == '__main__':
     app.run(debug=True, port=3000)
