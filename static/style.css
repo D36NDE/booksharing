@@ -313,9 +313,21 @@ input:focus, select:focus {
   }
 
   nav ul {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.75rem;
+    flex-direction: column;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  nav ul li {
+    width: 100%;
+    text-align: center;
+  }
+
+  nav ul a {
+    display: block;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
   }
 
   h1 {
