@@ -1,9 +1,0 @@
-services:
-  - type: web
-    name: booksharing
-    runtime: python
-    buildCommand: "pip install -r requirements.txt && python database.py"
-    startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT"
-    envVars:
-      - key: SECRET_KEY
-        generateValue: true
