@@ -6,7 +6,7 @@ import os
 import uuid
 
 app = Flask(__name__)
-app.secret_key = 'super_secret_dev_key_for_booksharing'
+app.secret_key = os.environ.get('SECRET_KEY', 'super_secret_dev_key_for_booksharing')
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static/uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
