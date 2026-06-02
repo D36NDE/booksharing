@@ -48,33 +48,43 @@ def login():
         return redirect(url_for('index'))
         
     if request.method == 'POST':
-        action = request.form.get('action')
         username = request.form.get('username')
         password = request.form.get('password')
         
-        if action == 'login':
-            user = g.db.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
-            if user and check_password_hash(user['password'], password):
-                session['user_id'] = user['id']
-                return redirect(url_for('index'))
-            flash('Falscher Benutzername oder Passwort.', 'error')
+        user = g.db.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+        if user and check_password_hash(user['password'], password):
+            session['user_id'] = user['id']
+            return redirect(url_for('index'))
+        flash('Falscher Benutzername oder Passwort.', 'error')
             
-        elif action == 'register':
-            email = request.form.get('email')
-            if not email:
-                flash('Bitte gib eine E-Mail Adresse für die Registrierung an.', 'error')
-                return render_template('login.html')
-                
-            user = g.db.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
-            if user:
-                flash('Benutzername existiert bereits.', 'error')
-            else:
-                hashed = generate_password_hash(password, method='pbkdf2:sha256')
-                g.db.execute('INSERT INTO users (username, email, password) VALUES (?, ?, ?)', (username, email, hashed))
-                g.db.commit()
-                flash('Erfolgreich registriert. Du kannst dich jetzt einloggen!', 'success')
-                
     return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if g.user:
+        return redirect(url_for('index'))
+        
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        
+        if not email:
+            flash('Bitte gib eine E-Mail Adresse für die Registrierung an.', 'error')
+            return render_template('register.html')
+            
+        user = g.db.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+        if user:
+            flash('Benutzername existiert bereits.', 'error')
+        else:
+            hashed = generate_password_hash(password, method='pbkdf2:sha256')
+            g.db.execute('INSERT INTO users (username, email, password) VALUES (?, ?, ?)', (username, email, hashed))
+            g.db.commit()
+            flash('Erfolgreich registriert. Du kannst dich jetzt einloggen!', 'success')
+            return redirect(url_for('login'))
+            
+    return render_template('register.html')
+
 
 @app.route('/logout')
 def logout():
