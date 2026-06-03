@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BookSharing - Bücher tauschen</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
 
     {% if g.user %}
@@ -22,13 +24,13 @@
 
     <main class="container fade-in">
         {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="flash-messages">
-                    {% for category, message in messages %}
-                        <div class="flash {{ category }}">{{ message }}</div>
-                    {% endfor %}
-                </div>
-            {% endif %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
         {% endwith %}
 
         {% block content %}{% endblock %}
@@ -36,7 +38,7 @@
 
     <footer class="container">
         <div class="footer-content">
-            <p>&copy; 2024 BookSharing - Bücher tauschen leicht gemacht</p>
+            <p>&copy; 2026 BookSharing - Bücher tauschen leicht gemacht</p>
             <div class="footer-links">
                 <a href="{{ url_for('impressum') }}">Impressum</a>
             </div>
@@ -44,4 +46,5 @@
     </footer>
 
 </body>
+
 </html>
