@@ -4,6 +4,14 @@
 <div style="text-align: center; margin-bottom: 3rem;">
     <h1>Entdecke neue Bücher</h1>
     <p>Tausche deine gelesenen Bücher gegen spannende neue Geschichten.</p>
+    {% if not g.user %}
+    <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <a href="{{ url_for('register') }}" class="btn btn-primary">Kostenlos registrieren & Buch anbieten</a>
+        <a href="{{ url_for('login') }}" class="btn" style="background: transparent; border: 1px solid var(--primary); color: var(--primary);">Bereits ein Konto? Anmelden</a>
+    </div>
+    {% else %}
+    <a href="{{ url_for('my_books') }}" class="btn btn-primary" style="margin-top: 1rem;">+ Eigenes Buch anbieten</a>
+    {% endif %}
 </div>
 
 <!-- PayPal Donation Banner -->
@@ -48,14 +56,23 @@
         </div>
 
         <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--card-border);">
+            {% if g.user %}
             <a href="{{ url_for('request_book', book_id=book.id) }}" class="btn btn-primary"
                 style="display: block;">Dieses Buch anfragen</a>
+            {% else %}
+            <a href="{{ url_for('login', next=url_for('request_book', book_id=book.id)) }}" class="btn btn-primary"
+                style="display: block;">Anmelden & anfragen</a>
+            {% endif %}
         </div>
     </div>
     {% else %}
     <div class="glass" style="grid-column: 1 / -1; padding: 3rem; text-align: center;">
         <h2>Aktuell keine Bücher verfügbar</h2>
+        {% if g.user %}
         <p>Sei der Erste, der <a href="{{ url_for('my_books') }}">ein Buch anbietet</a>!</p>
+        {% else %}
+        <p>Sei der Erste! <a href="{{ url_for('register') }}">Jetzt registrieren</a> und ein Buch anbieten.</p>
+        {% endif %}
     </div>
     {% endfor %}
 </div>

@@ -7,6 +7,9 @@
         Login bei BookSharing</h2>
 
     <form method="POST" action="{{ url_for('login') }}">
+        {% if next_url %}
+        <input type="hidden" name="next" value="{{ next_url }}">
+        {% endif %}
         <div class="form-group">
             <label for="username">Benutzername</label>
             <input type="text" id="username" name="username" required autocomplete="username">

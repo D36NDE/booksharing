@@ -51,6 +51,8 @@ def teardown_request(exception):
 def login():
     if g.user:
         return redirect(url_for('index'))
+
+    next_url = request.args.get('next') or request.form.get('next')
         
     if request.method == 'POST':
         username = request.form.get('username')
@@ -59,10 +61,10 @@ def login():
         user = g.db.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
         if user and check_password_hash(user['password'], password):
             session['user_id'] = user['id']
-            return redirect(url_for('index'))
+            return redirect(next_url or url_for('index'))
         flash('Falscher Benutzername oder Passwort.', 'error')
             
-    return render_template('login.html')
+    return render_template('login.html', next_url=next_url)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -99,23 +101,29 @@ def logout():
 # --- Main Routes ---
 @app.route('/')
 def index():
-    if not g.user:
-        return redirect(url_for('login'))
-        
-    # Get all available books that don't belong to the user
-    books = g.db.execute('''
-        SELECT b.id, b.title, b.author, b.condition, b.image_filename, u.username as owner_name 
-        FROM books b 
-        JOIN users u ON b.owner_id = u.id 
-        WHERE b.owner_id != ? AND b.status = 'AVAILABLE'
-    ''', (g.user['id'],)).fetchall()
+    # Alle Bücher anzeigen, wenn nicht eingeloggt
+    if g.user:
+        books = g.db.execute('''
+            SELECT b.id, b.title, b.author, b.condition, b.image_filename, u.username as owner_name 
+            FROM books b 
+            JOIN users u ON b.owner_id = u.id 
+            WHERE b.owner_id != ? AND b.status = 'AVAILABLE'
+        ''', (g.user['id'],)).fetchall()
+    else:
+        books = g.db.execute('''
+            SELECT b.id, b.title, b.author, b.condition, b.image_filename, u.username as owner_name 
+            FROM books b 
+            JOIN users u ON b.owner_id = u.id 
+            WHERE b.status = 'AVAILABLE'
+        ''').fetchall()
     
     return render_template('index.html', books=books)
 
 @app.route('/my-books', methods=['GET', 'POST'])
 def my_books():
     if not g.user:
-        return redirect(url_for('login'))
+        flash('Bitte melde dich an, um ein Buch hochzuladen.', 'info')
+        return redirect(url_for('login', next=url_for('my_books')))
         
     if request.method == 'POST':
         title = request.form.get('title')

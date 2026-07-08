@@ -109,11 +109,18 @@ nav ul {
   display: flex;
   gap: 2rem;
   list-style: none;
+  align-items: center;
+}
+
+nav ul li {
+  display: flex;
+  align-items: center;
 }
 
 nav ul a {
   color: var(--text-color);
   font-weight: 500;
+  line-height: 1;
 }
 
 nav ul a:hover {

@@ -22,17 +22,20 @@
 
 <body>
 
-    {% if g.user %}
     <nav class="glass">
         <a href="{{ url_for('index') }}" class="brand">Book<span>Sharing</span></a>
         <ul>
             <li><a href="{{ url_for('index') }}">Entdecken</a></li>
+            {% if g.user %}
             <li><a href="{{ url_for('my_books') }}">Meine Bücher</a></li>
             <li><a href="{{ url_for('requests_page') }}">Anfragen</a></li>
             <li><a href="{{ url_for('logout') }}">Logout ({{ g.user.username }})</a></li>
+            {% else %}
+            <li><a href="{{ url_for('login') }}" class="btn btn-primary" style="padding: 0.35rem 1.1rem; font-size: 0.9rem; line-height: 1.4;">Anmelden</a></li>
+            <li><a href="{{ url_for('register') }}" style="color: var(--primary);">Registrieren</a></li>
+            {% endif %}
         </ul>
     </nav>
-    {% endif %}
 
     <main class="container fade-in">
         {% with messages = get_flashed_messages(with_categories=true) %}
