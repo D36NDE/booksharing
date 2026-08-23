@@ -56,18 +56,18 @@
     <div class="section-header">
         <h2>
             {% if q or condition %}
-                Suchergebnisse
+            Suchergebnisse
             {% else %}
-                Aktuell verfügbare Bücher zum Tauschen
+            Aktuell verfügbare Bücher zum Tauschen
             {% endif %}
         </h2>
         {% if q or condition %}
         <div class="search-info-bar">
             <span>
                 {% if books|length == 1 %}
-                    <strong>1 Buch</strong> gefunden
+                <strong>1 Buch</strong> gefunden
                 {% else %}
-                    <strong>{{ books|length }} Bücher</strong> gefunden
+                <strong>{{ books|length }} Bücher</strong> gefunden
                 {% endif %}
                 {% if q %} für „<mark class="search-highlight">{{ q }}</mark>“{% endif %}
                 {% if condition %} (Zustand: <em>{{ condition }}</em>){% endif %}
@@ -105,24 +105,25 @@
                     style="display: block; text-align: center;">Dieses Buch anfragen</a>
                 {% else %}
                 <a href="{{ url_for('login', next=url_for('request_book', book_id=book.id)) }}" class="btn btn-primary"
-                    style="display: block; text-align: center;">Anmelden &amp; anfragen</a>
+                    style="display: block; text-align: center;">Kostenlos anfragen</a>
                 {% endif %}
             </div>
         </article>
         {% else %}
         <div class="glass" style="grid-column: 1 / -1; padding: 3rem; text-align: center;">
             {% if q or condition %}
-                <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
-                <h2>Keine passenden Bücher gefunden</h2>
-                <p style="margin-bottom: 1.5rem;">Zu deiner Suchanfrage {% if q %}„<strong>{{ q }}</strong>“{% endif %} wurden keine verfügbaren Bücher gefunden.</p>
-                <a href="{{ url_for('index') }}" class="btn btn-primary">Alle verfügbaren Bücher anzeigen</a>
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+            <h2>Keine passenden Bücher gefunden</h2>
+            <p style="margin-bottom: 1.5rem;">Zu deiner Suchanfrage {% if q %}„<strong>{{ q }}</strong>“{% endif %}
+                wurden keine verfügbaren Bücher gefunden.</p>
+            <a href="{{ url_for('index') }}" class="btn btn-primary">Alle verfügbaren Bücher anzeigen</a>
             {% else %}
-                <h2>Aktuell keine Bücher verfügbar</h2>
-                {% if g.user %}
-                <p>Sei der Erste, der <a href="{{ url_for('my_books') }}">ein Buch anbietet</a>!</p>
-                {% else %}
-                <p>Sei der Erste! <a href="{{ url_for('register') }}">Jetzt registrieren</a> und ein Buch anbieten.</p>
-                {% endif %}
+            <h2>Aktuell keine Bücher verfügbar</h2>
+            {% if g.user %}
+            <p>Sei der Erste, der <a href="{{ url_for('my_books') }}">ein Buch anbietet</a>!</p>
+            {% else %}
+            <p>Sei der Erste! <a href="{{ url_for('register') }}">Jetzt registrieren</a> und ein Buch anbieten.</p>
+            {% endif %}
             {% endif %}
         </div>
         {% endfor %}
