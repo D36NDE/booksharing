@@ -13,7 +13,12 @@
       "url": "{{ url_for('index', _external=True) }}",
       "name": "BookSharing",
       "description": "Kostenlos Bücher tauschen und gebrauchten Büchern ein zweites Leben schenken.",
-      "inLanguage": "de-DE"
+      "inLanguage": "de-DE",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "{{ url_for('index', _external=True) }}?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
     },
     {
       "@type": "Organization",
@@ -28,12 +33,13 @@
 {% endblock %}
 
 {% block content %}
-<section style="text-align: center; margin-bottom: 3rem;">
+<section class="hero-section">
     <h1>Kostenlos Bücher tauschen auf BookSharing</h1>
-    <p style="font-size: 1.15rem; color: var(--text-muted, #555); max-width: 700px; margin: 0.5rem auto 0;">
+    <p class="hero-subtitle">
         Tausche deine bereits gelesenen Bücher gegen neue Lieblingsschmökereien. Nachhaltig, kostenfrei &amp; einfach in
         unserer Lesegemeinschaft.
     </p>
+
     {% if not g.user %}
     <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
         <a href="{{ url_for('register') }}" class="btn btn-primary">Kostenlos registrieren &amp; Buch anbieten</a>
@@ -47,7 +53,30 @@
 </section>
 
 <section>
-    <h2 style="margin-bottom: 1.5rem; text-align: center;">Aktuell verfügbare Bücher zum Tauschen</h2>
+    <div class="section-header">
+        <h2>
+            {% if q or condition %}
+                Suchergebnisse
+            {% else %}
+                Aktuell verfügbare Bücher zum Tauschen
+            {% endif %}
+        </h2>
+        {% if q or condition %}
+        <div class="search-info-bar">
+            <span>
+                {% if books|length == 1 %}
+                    <strong>1 Buch</strong> gefunden
+                {% else %}
+                    <strong>{{ books|length }} Bücher</strong> gefunden
+                {% endif %}
+                {% if q %} für „<mark class="search-highlight">{{ q }}</mark>“{% endif %}
+                {% if condition %} (Zustand: <em>{{ condition }}</em>){% endif %}
+            </span>
+            <a href="{{ url_for('index') }}" class="reset-search-link">&times; Suche zurücksetzen</a>
+        </div>
+        {% endif %}
+    </div>
+
     <div class="grid">
         {% for book in books %}
         <article class="card glass">
@@ -82,11 +111,18 @@
         </article>
         {% else %}
         <div class="glass" style="grid-column: 1 / -1; padding: 3rem; text-align: center;">
-            <h2>Aktuell keine Bücher verfügbar</h2>
-            {% if g.user %}
-            <p>Sei der Erste, der <a href="{{ url_for('my_books') }}">ein Buch anbietet</a>!</p>
+            {% if q or condition %}
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+                <h2>Keine passenden Bücher gefunden</h2>
+                <p style="margin-bottom: 1.5rem;">Zu deiner Suchanfrage {% if q %}„<strong>{{ q }}</strong>“{% endif %} wurden keine verfügbaren Bücher gefunden.</p>
+                <a href="{{ url_for('index') }}" class="btn btn-primary">Alle verfügbaren Bücher anzeigen</a>
             {% else %}
-            <p>Sei der Erste! <a href="{{ url_for('register') }}">Jetzt registrieren</a> und ein Buch anbieten.</p>
+                <h2>Aktuell keine Bücher verfügbar</h2>
+                {% if g.user %}
+                <p>Sei der Erste, der <a href="{{ url_for('my_books') }}">ein Buch anbietet</a>!</p>
+                {% else %}
+                <p>Sei der Erste! <a href="{{ url_for('register') }}">Jetzt registrieren</a> und ein Buch anbieten.</p>
+                {% endif %}
             {% endif %}
         </div>
         {% endfor %}

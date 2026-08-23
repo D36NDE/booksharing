@@ -101,23 +101,35 @@ def logout():
 # --- Main Routes ---
 @app.route('/')
 def index():
-    # Alle Bücher anzeigen, wenn nicht eingeloggt
+    q = request.args.get('q', '').strip()
+    condition = request.args.get('condition', '').strip()
+
+    sql = '''
+        SELECT b.id, b.title, b.author, b.condition, b.image_filename, u.username as owner_name 
+        FROM books b 
+        JOIN users u ON b.owner_id = u.id 
+        WHERE b.status = 'AVAILABLE'
+    '''
+    params = []
+
     if g.user:
-        books = g.db.execute('''
-            SELECT b.id, b.title, b.author, b.condition, b.image_filename, u.username as owner_name 
-            FROM books b 
-            JOIN users u ON b.owner_id = u.id 
-            WHERE b.owner_id != ? AND b.status = 'AVAILABLE'
-        ''', (g.user['id'],)).fetchall()
-    else:
-        books = g.db.execute('''
-            SELECT b.id, b.title, b.author, b.condition, b.image_filename, u.username as owner_name 
-            FROM books b 
-            JOIN users u ON b.owner_id = u.id 
-            WHERE b.status = 'AVAILABLE'
-        ''').fetchall()
+        sql += ' AND b.owner_id != ?'
+        params.append(g.user['id'])
+
+    if q:
+        sql += ' AND (b.title LIKE ? OR b.author LIKE ? OR u.username LIKE ?)'
+        search_pattern = f'%{q}%'
+        params.extend([search_pattern, search_pattern, search_pattern])
+
+    if condition:
+        sql += ' AND b.condition = ?'
+        params.append(condition)
+
+    sql += ' ORDER BY b.id DESC'
+
+    books = g.db.execute(sql, params).fetchall()
     
-    return render_template('index.html', books=books)
+    return render_template('index.html', books=books, q=q, condition=condition)
 
 @app.route('/my-books', methods=['GET', 'POST'])
 def my_books():
