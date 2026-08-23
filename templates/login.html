@@ -1,5 +1,13 @@
 {% extends "layout.html" %}
 
+{% block title %}Anmelden - BookSharing{% endblock %}
+
+{% block meta %}
+<meta name="description" content="Melde dich bei BookSharing an, um deine Bücher zum Tauschen anzubieten und Tauschanfragen zu senden.">
+<meta name="robots" content="noindex, follow">
+<link rel="canonical" href="{{ url_for('login', _external=True) }}">
+{% endblock %}
+
 {% block content %}
 <div class="glass" style="max-width: 400px; margin: 4rem auto; padding: 2rem;">
     <h2

@@ -4,7 +4,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BookSharing - Bücher tauschen</title>
+    <title>{% block title %}BookSharing - Bücher kostenlos tauschen &amp; nachhaltig lesen{% endblock %}</title>
+
+    <!-- SEO & Social Meta Tags -->
+    {% block meta %}
+    <meta name="description" content="Tausche deine gelesenen Bücher kostenlos auf BookSharing. Finde neue Romane, Krimis &amp; Fachbücher in deiner Community und gib deinen Büchern ein zweites Leben.">
+    <meta name="keywords" content="Bücher tauschen, Buchtausch, gebrauchte Bücher, kostenlos lesen, Bücherflohmarkt, BookSharing">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{ request.base_url }}">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.base_url }}">
+    <meta property="og:title" content="{% block og_title %}BookSharing - Bücher kostenlos tauschen{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Tausche deine gelesenen Bücher kostenlos auf BookSharing. Finde neue Romane, Krimis &amp; Fachbücher in deiner Community.{% endblock %}">
+    <meta property="og:image" content="{{ url_for('static', filename='favicon.png', _external=True) }}">
+    <meta property="og:site_name" content="BookSharing">
+    <meta property="og:locale" content="de_DE">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="{{ request.base_url }}">
+    <meta name="twitter:title" content="{% block twitter_title %}BookSharing - Bücher kostenlos tauschen{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}Tausche deine gelesenen Bücher kostenlos auf BookSharing.{% endblock %}">
+    <meta name="twitter:image" content="{{ url_for('static', filename='favicon.png', _external=True) }}">
+    {% endblock %}
+
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
@@ -18,24 +43,27 @@
         gtag('config', 'G-907T7BQTP8');
     </script>
 
+    {% block schema %}{% endblock %}
 </head>
 
 <body>
 
-    <nav class="glass">
-        <a href="{{ url_for('index') }}" class="brand">Book<span>Sharing</span></a>
-        <ul>
-            <li><a href="{{ url_for('index') }}">Entdecken</a></li>
-            {% if g.user %}
-            <li><a href="{{ url_for('my_books') }}">Meine Bücher</a></li>
-            <li><a href="{{ url_for('requests_page') }}">Anfragen</a></li>
-            <li><a href="{{ url_for('logout') }}">Logout ({{ g.user.username }})</a></li>
-            {% else %}
-            <li><a href="{{ url_for('login') }}" class="btn btn-primary" style="padding: 0.35rem 1.1rem; font-size: 0.9rem; line-height: 1.4;">Anmelden</a></li>
-            <li><a href="{{ url_for('register') }}" style="color: var(--primary);">Registrieren</a></li>
-            {% endif %}
-        </ul>
-    </nav>
+    <header>
+        <nav class="glass">
+            <a href="{{ url_for('index') }}" class="brand">Book<span>Sharing</span></a>
+            <ul>
+                <li><a href="{{ url_for('index') }}">Entdecken</a></li>
+                {% if g.user %}
+                <li><a href="{{ url_for('my_books') }}">Meine Bücher</a></li>
+                <li><a href="{{ url_for('requests_page') }}">Anfragen</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout ({{ g.user.username }})</a></li>
+                {% else %}
+                <li><a href="{{ url_for('login') }}" class="btn btn-primary" style="padding: 0.35rem 1.1rem; font-size: 0.9rem; line-height: 1.4;">Anmelden</a></li>
+                <li><a href="{{ url_for('register') }}" style="color: var(--primary);">Registrieren</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
 
     <main class="container fade-in">
         {% with messages = get_flashed_messages(with_categories=true) %}

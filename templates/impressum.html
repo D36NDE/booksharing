@@ -1,5 +1,13 @@
 {% extends "layout.html" %}
 
+{% block title %}Impressum &amp; Rechtliche Hinweise - BookSharing{% endblock %}
+
+{% block meta %}
+<meta name="description" content="Impressum und Angaben gemäß § 5 DDG für die Buchtausch-Plattform BookSharing. Verantwortlich: Dennis Dellemann.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="{{ url_for('impressum', _external=True) }}">
+{% endblock %}
+
 {% block content %}
 <div class="glass fade-in" style="max-width: 800px; margin: 4rem auto; padding: 3rem;">
     <h1>Impressum</h1>

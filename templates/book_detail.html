@@ -1,0 +1,133 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ book.title }} von {{ book.author }} kostenlos tauschen | BookSharing{% endblock %}
+
+{% block meta %}
+<meta name="description" content="Tausche {{ book.title }} von {{ book.author }} (Zustand: {{ book.condition }}) kostenlos auf BookSharing. Melde dich an und sende eine Tauschanfrage.">
+<meta name="keywords" content="{{ book.title }}, {{ book.author }}, Buch tauschen, {{ book.condition }}, Buch sharing, gebrauchte Bücher">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="{{ url_for('book_detail', book_id=book.id, _external=True) }}">
+
+<!-- Open Graph / Facebook -->
+<meta property="og:type" content="book">
+<meta property="og:url" content="{{ url_for('book_detail', book_id=book.id, _external=True) }}">
+<meta property="og:title" content="{{ book.title }} von {{ book.author }} - BookSharing">
+<meta property="og:description" content="Tausche {{ book.title }} von {{ book.author }} kostenlos auf BookSharing. Zustand: {{ book.condition }}.">
+{% if book.image_filename %}
+<meta property="og:image" content="{{ url_for('static', filename='uploads/' + book.image_filename, _external=True) }}">
+{% else %}
+<meta property="og:image" content="{{ url_for('static', filename='favicon.png', _external=True) }}">
+{% endif %}
+<meta property="og:site_name" content="BookSharing">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ book.title }} von {{ book.author }} - BookSharing">
+<meta name="twitter:description" content="Tausche {{ book.title }} von {{ book.author }} kostenlos auf BookSharing.">
+{% if book.image_filename %}
+<meta name="twitter:image" content="{{ url_for('static', filename='uploads/' + book.image_filename, _external=True) }}">
+{% else %}
+<meta name="twitter:image" content="{{ url_for('static', filename='favicon.png', _external=True) }}">
+{% endif %}
+{% endblock %}
+
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org/",
+  "@type": "Book",
+  "name": {{ book.title|tojson }},
+  "author": {
+    "@type": "Person",
+    "name": {{ book.author|tojson }}
+  },
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "EUR",
+    "availability": "{% if book.status == 'AVAILABLE' %}https://schema.org/InStock{% else %}https://schema.org/OutOfStock{% endif %}",
+    "seller": {
+      "@type": "Person",
+      "name": {{ book.owner_name|tojson }}
+    }
+  }{% if book.image_filename %},
+  "image": "{{ url_for('static', filename='uploads/' + book.image_filename, _external=True) }}"
+  {% endif %}
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<nav aria-label="Breadcrumb" style="margin-bottom: 1.5rem;">
+    <ol style="display: flex; list-style: none; padding: 0; gap: 0.5rem; font-size: 0.9rem; color: var(--text-muted, #777);">
+        <li><a href="{{ url_for('index') }}" style="color: var(--primary);">Startseite</a> /</li>
+        <li>Bücher /</li>
+        <li aria-current="page" style="color: var(--text-color);">{{ book.title }}</li>
+    </ol>
+</nav>
+
+<article class="glass" style="max-width: 900px; margin: 0 auto; padding: 2.5rem; border-radius: 16px;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2.5rem; align-items: start;">
+        <div>
+            {% if book.image_filename %}
+            <img src="{{ url_for('static', filename='uploads/' + book.image_filename) }}" alt="Buchcover von {{ book.title }} von {{ book.author }}" style="width: 100%; height: auto; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); object-fit: cover;">
+            {% else %}
+            <div style="aspect-ratio: 2/3; background: rgba(255,255,255,0.05); border: 2px dashed var(--card-border); border-radius: 12px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 1rem;">
+                <p style="color: var(--text-muted, #888);">Kein Coverbild vorhanden</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div>
+            <h1 style="font-size: 2rem; margin-bottom: 0.5rem; line-height: 1.2;">{{ book.title }}</h1>
+            <h2 style="font-size: 1.2rem; color: var(--primary); margin-bottom: 1.5rem; font-weight: 500;">von {{ book.author }}</h2>
+
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 10px; padding: 1.25rem; margin-bottom: 2rem;">
+                <div style="margin-bottom: 0.75rem;">
+                    <strong>Zustand:</strong> <span class="badge badge-success">{{ book.condition }}</span>
+                </div>
+                <div style="margin-bottom: 0.75rem;">
+                    <strong>Angeboten von:</strong> <span>{{ book.owner_name }}</span>
+                </div>
+                <div>
+                    <strong>Status:</strong> 
+                    {% if book.status == 'AVAILABLE' %}
+                    <span style="color: #2e7d32; font-weight: 600;">Verfügbar zum Tausch</span>
+                    {% else %}
+                    <span style="color: #d32f2f; font-weight: 600;">Aktuell reserviert / getauscht</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if book.status == 'AVAILABLE' %}
+                {% if g.user %}
+                    {% if g.user.username != book.owner_name %}
+                    <a href="{{ url_for('request_book', book_id=book.id) }}" class="btn btn-primary" style="display: block; text-align: center; font-size: 1.1rem; padding: 0.8rem 1.5rem;">
+                        Tauschanfrage für dieses Buch senden
+                    </a>
+                    {% else %}
+                    <div class="glass" style="padding: 1rem; text-align: center; color: var(--text-muted, #888);">
+                        Dies ist dein eigenes Buchangebot.
+                    </div>
+                    {% endif %}
+                {% else %}
+                <a href="{{ url_for('login', next=url_for('request_book', book_id=book.id)) }}" class="btn btn-primary" style="display: block; text-align: center; font-size: 1.1rem; padding: 0.8rem 1.5rem;">
+                    Anmelden &amp; Tauschanfrage senden
+                </a>
+                <p style="text-align: center; font-size: 0.85rem; margin-top: 0.5rem; color: var(--text-muted, #777);">
+                    Noch kein Konto? <a href="{{ url_for('register') }}" style="color: var(--primary);">Kostenlos registrieren</a>
+                </p>
+                {% endif %}
+            {% else %}
+            <div class="glass" style="padding: 1rem; text-align: center;">
+                Dieses Buch steht aktuell leider nicht mehr zur Verfügung.
+            </div>
+            {% endif %}
+
+            <div style="margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--card-border);">
+                <a href="{{ url_for('index') }}" style="color: var(--primary); text-decoration: none;">&larr; Zurück zur Buchübersicht</a>
+            </div>
+        </div>
+    </div>
+</article>
+{% endblock %}

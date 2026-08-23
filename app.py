@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, g
+from flask import Flask, render_template, request, redirect, url_for, session, flash, g, Response, abort
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import database
@@ -246,5 +246,64 @@ def requests_page():
 def impressum():
     return render_template('impressum.html')
 
+@app.route('/book/<int:book_id>')
+def book_detail(book_id):
+    book = g.db.execute('''
+        SELECT b.id, b.title, b.author, b.condition, b.image_filename, b.status, u.username as owner_name 
+        FROM books b 
+        JOIN users u ON b.owner_id = u.id 
+        WHERE b.id = ?
+    ''', (book_id,)).fetchone()
+    
+    if not book:
+        flash('Das angeforderte Buch wurde nicht gefunden.', 'error')
+        return redirect(url_for('index'))
+        
+    return render_template('book_detail.html', book=book)
+
+@app.route('/robots.txt')
+def robots():
+    sitemap_url = url_for('sitemap', _external=True)
+    content = f"""User-agent: *
+Allow: /
+Disallow: /my-books
+Disallow: /requests
+Disallow: /request-book/
+Disallow: /logout
+
+Sitemap: {sitemap_url}
+"""
+    return Response(content, mimetype='text/plain')
+
+@app.route('/sitemap.xml')
+def sitemap():
+    pages = [
+        {'loc': url_for('index', _external=True), 'changefreq': 'daily', 'priority': '1.0'},
+        {'loc': url_for('impressum', _external=True), 'changefreq': 'monthly', 'priority': '0.3'},
+        {'loc': url_for('login', _external=True), 'changefreq': 'monthly', 'priority': '0.5'},
+        {'loc': url_for('register', _external=True), 'changefreq': 'monthly', 'priority': '0.5'}
+    ]
+    
+    available_books = g.db.execute("SELECT id FROM books WHERE status = 'AVAILABLE'").fetchall()
+    for book in available_books:
+        pages.append({
+            'loc': url_for('book_detail', book_id=book['id'], _external=True),
+            'changefreq': 'weekly',
+            'priority': '0.8'
+        })
+
+    xml = ['<?xml version="1.0" encoding="UTF-8"?>']
+    xml.append('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
+    for page in pages:
+        xml.append('  <url>')
+        xml.append(f"    <loc>{page['loc']}</loc>")
+        xml.append(f"    <changefreq>{page['changefreq']}</changefreq>")
+        xml.append(f"    <priority>{page['priority']}</priority>")
+        xml.append('  </url>')
+    xml.append('</urlset>')
+    
+    return Response('\n'.join(xml), mimetype='application/xml')
+
 if __name__ == '__main__':
     app.run(debug=True, port=3000)
+

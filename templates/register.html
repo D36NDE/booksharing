@@ -1,5 +1,13 @@
 {% extends "layout.html" %}
 
+{% block title %}Kostenlos Registrieren - BookSharing{% endblock %}
+
+{% block meta %}
+<meta name="description" content="Erstelle ein kostenloses Konto bei BookSharing und werde Teil unserer Buchtausch-Community. Tausche Bücher unkompliziert und nachhaltig.">
+<meta name="robots" content="noindex, follow">
+<link rel="canonical" href="{{ url_for('register', _external=True) }}">
+{% endblock %}
+
 {% block content %}
 <div class="glass" style="max-width: 400px; margin: 4rem auto; padding: 2rem;">
     <h2
