@@ -18,6 +18,15 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def delete_book_image(filename):
+    if filename:
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        if os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except OSError:
+                pass
+
 @app.errorhandler(413)
 def request_entity_too_large(error):
     flash('Das hochgeladene Bild ist zu groß. Bitte wähle ein Bild unter 32 MB.', 'error')
@@ -161,8 +170,93 @@ def my_books():
             
         return redirect(url_for('my_books'))
         
-    books = g.db.execute('SELECT * FROM books WHERE owner_id = ?', (g.user['id'],)).fetchall()
+    books = g.db.execute('SELECT * FROM books WHERE owner_id = ? ORDER BY id DESC', (g.user['id'],)).fetchall()
     return render_template('my_books.html', books=books)
+
+@app.route('/my-books/edit/<int:book_id>', methods=['GET', 'POST'])
+def edit_book(book_id):
+    if not g.user:
+        flash('Bitte melde dich an, um Bücher zu bearbeiten.', 'info')
+        return redirect(url_for('login'))
+
+    book = g.db.execute('SELECT * FROM books WHERE id = ?', (book_id,)).fetchone()
+    if not book:
+        flash('Buch nicht gefunden.', 'error')
+        return redirect(url_for('my_books'))
+
+    if book['owner_id'] != g.user['id']:
+        flash('Du bist nicht berechtigt, dieses Buch zu bearbeiten.', 'error')
+        return redirect(url_for('my_books'))
+
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        author = request.form.get('author', '').strip()
+        condition = request.form.get('condition', '').strip()
+        remove_image = request.form.get('remove_image') == '1'
+
+        if not title or not author or not condition:
+            flash('Bitte alle Pflichtfelder (Titel, Autor, Zustand) ausfüllen.', 'error')
+            return render_template('edit_book.html', book=book)
+
+        image_filename = book['image_filename']
+
+        # Handle removing image
+        if remove_image and image_filename:
+            delete_book_image(image_filename)
+            image_filename = None
+
+        # Handle uploading a new image
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename != '' and allowed_file(file.filename):
+                if image_filename:
+                    delete_book_image(image_filename)
+                filename = secure_filename(file.filename)
+                unique_filename = f"{uuid.uuid4().hex}_{filename}"
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
+                image_filename = unique_filename
+
+        g.db.execute(
+            'UPDATE books SET title = ?, author = ?, condition = ?, image_filename = ? WHERE id = ?',
+            (title, author, condition, image_filename, book_id)
+        )
+        g.db.commit()
+        flash('Buch erfolgreich aktualisiert!', 'success')
+        return redirect(url_for('my_books'))
+
+    return render_template('edit_book.html', book=book)
+
+@app.route('/my-books/delete/<int:book_id>', methods=['POST'])
+def delete_book(book_id):
+    if not g.user:
+        flash('Bitte melde dich an.', 'info')
+        return redirect(url_for('login'))
+
+    book = g.db.execute('SELECT * FROM books WHERE id = ?', (book_id,)).fetchone()
+    if not book:
+        flash('Buch nicht gefunden.', 'error')
+        return redirect(url_for('my_books'))
+
+    if book['owner_id'] != g.user['id']:
+        flash('Du bist nicht berechtigt, dieses Buch zu löschen.', 'error')
+        return redirect(url_for('my_books'))
+
+    if book['status'] == 'PENDING':
+        flash('Dieses Buch ist aktuell Teil einer laufenden Tauschanfrage und kann nicht gelöscht werden.', 'error')
+        return redirect(url_for('my_books'))
+
+    # Clean up non-active exchange requests for this book
+    g.db.execute('DELETE FROM exchange_requests WHERE target_book_id = ? OR offered_book_id = ?', (book_id, book_id))
+
+    # Delete cover image if present
+    if book['image_filename']:
+        delete_book_image(book['image_filename'])
+
+    g.db.execute('DELETE FROM books WHERE id = ?', (book_id,))
+    g.db.commit()
+
+    flash(f'Das Buch "{book["title"]}" wurde erfolgreich gelöscht.', 'success')
+    return redirect(url_for('my_books'))
 
 @app.route('/request-book/<int:book_id>', methods=['GET', 'POST'])
 def request_book(book_id):

@@ -1,0 +1,85 @@
+{% extends "layout.html" %}
+
+{% block title %}Buch bearbeiten - {{ book.title }} | BookSharing{% endblock %}
+
+{% block meta %}
+<meta name="robots" content="noindex, nofollow">
+{% endblock %}
+
+{% block content %}
+<nav aria-label="Breadcrumb" style="margin-bottom: 1.5rem;">
+    <ol style="display: flex; list-style: none; padding: 0; gap: 0.5rem; font-size: 0.9rem; color: var(--text-muted, #777);">
+        <li><a href="{{ url_for('index') }}" style="color: var(--primary);">Startseite</a> /</li>
+        <li><a href="{{ url_for('my_books') }}" style="color: var(--primary);">Meine Bücher</a> /</li>
+        <li aria-current="page" style="color: var(--text-color);">Bearbeiten: {{ book.title }}</li>
+    </ol>
+</nav>
+
+<div class="glass" style="max-width: 650px; margin: 0 auto; padding: 2.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h1 style="font-size: 1.8rem; margin: 0;">Buch bearbeiten</h1>
+        <span class="badge {% if book.status == 'AVAILABLE' %}badge-success{% elif book.status == 'PENDING' %}badge-warning{% else %}badge-danger{% endif %}">
+            Status: {{ book.status }}
+        </span>
+    </div>
+
+    {% if book.status == 'PENDING' %}
+    <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 8px; padding: 0.85rem 1rem; margin-bottom: 1.5rem; font-size: 0.9rem; color: #fcd34d;">
+        ⚠️ <strong>Hinweis:</strong> Dieses Buch ist aktuell Teil einer laufenden Tauschanfrage.
+    </div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('edit_book', book_id=book.id) }}" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="title">Titel des Buches *</label>
+            <input type="text" id="title" name="title" value="{{ book.title }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="author">Autor *</label>
+            <input type="text" id="author" name="author" value="{{ book.author }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="condition">Zustand *</label>
+            <select id="condition" name="condition" required>
+                <option value="Wie neu" {% if book.condition == 'Wie neu' %}selected{% endif %}>Wie neu</option>
+                <option value="Sehr gut" {% if book.condition == 'Sehr gut' %}selected{% endif %}>Sehr gut</option>
+                <option value="Gut" {% if book.condition == 'Gut' %}selected{% endif %}>Gut</option>
+                <option value="Akzeptabel" {% if book.condition == 'Akzeptabel' %}selected{% endif %}>Akzeptabel</option>
+            </select>
+        </div>
+
+        <div class="form-group" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border); border-radius: 12px; padding: 1.25rem;">
+            <label style="margin-bottom: 0.75rem;">Buchcover</label>
+            
+            {% if book.image_filename %}
+            <div style="display: flex; gap: 1.5rem; align-items: center; margin-bottom: 1rem;">
+                <img src="{{ url_for('static', filename='uploads/' + book.image_filename) }}" 
+                     alt="Aktuelles Cover für {{ book.title }}" 
+                     style="width: 80px; height: 110px; object-fit: cover; border-radius: 8px; border: 1px solid var(--card-border);">
+                <div>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer; color: #fca5a5;">
+                        <input type="checkbox" name="remove_image" value="1" style="width: auto; cursor: pointer;">
+                        Aktuelles Coverbild entfernen
+                    </label>
+                    <p style="font-size: 0.8rem; margin-top: 0.25rem;">Wähle diese Option, wenn du kein Bild mehr anzeigen möchtest.</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <div>
+                <label for="image" style="font-size: 0.9rem; font-weight: normal;">
+                    {% if book.image_filename %}Neues Bild hochladen (ersetzt das bisherige):{% else %}Bild hinzufügen (optional):{% endif %}
+                </label>
+                <input type="file" id="image" name="image" accept="image/*" style="padding: 0.5rem;">
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+            <a href="{{ url_for('my_books') }}" class="btn btn-secondary" style="flex: 1;">Abbrechen</a>
+            <button type="submit" class="btn btn-primary" style="flex: 2;">Änderungen speichern</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
