@@ -55,27 +55,37 @@
 <section>
     <div class="section-header">
         <h2>
-            {% if q or condition %}
+            {% if q or condition or genre %}
             Suchergebnisse
             {% else %}
             Aktuell verfügbare Bücher zum Tauschen
             {% endif %}
         </h2>
-        {% if q or condition %}
-        <div class="search-info-bar">
-            <span>
-                {% if books|length == 1 %}
-                <strong>1 Buch</strong> gefunden
-                {% else %}
-                <strong>{{ books|length }} Bücher</strong> gefunden
-                {% endif %}
-                {% if q %} für „<mark class="search-highlight">{{ q }}</mark>“{% endif %}
-                {% if condition %} (Zustand: <em>{{ condition }}</em>){% endif %}
-            </span>
-            <a href="{{ url_for('index') }}" class="reset-search-link">&times; Suche zurücksetzen</a>
-        </div>
-        {% endif %}
     </div>
+
+    <!-- Genre Filter Chips -->
+    <div class="genre-chips">
+        <a href="{{ url_for('index', q=q, condition=condition) }}" class="genre-chip {% if not genre %}active{% endif %}">Alle</a>
+        {% for g_name in genres %}
+        <a href="{{ url_for('index', q=q, condition=condition, genre=g_name) }}" class="genre-chip {% if genre == g_name %}active{% endif %}">{{ g_name }}</a>
+        {% endfor %}
+    </div>
+
+    {% if q or condition or genre %}
+    <div class="search-info-bar" style="margin-top: 0; margin-bottom: 1.25rem;">
+        <span>
+            {% if books|length == 1 %}
+            <strong>1 Buch</strong> gefunden
+            {% else %}
+            <strong>{{ books|length }} Bücher</strong> gefunden
+            {% endif %}
+            {% if q %} für „<mark class="search-highlight">{{ q }}</mark>"{% endif %}
+            {% if genre %} im Genre <em>{{ genre }}</em>{% endif %}
+            {% if condition %} (Zustand: <em>{{ condition }}</em>){% endif %}
+        </span>
+        <a href="{{ url_for('index') }}" class="reset-search-link">&times; Zurücksetzen</a>
+    </div>
+    {% endif %}
 
     <div class="grid">
         {% for book in books %}
@@ -90,13 +100,20 @@
                     style="text-decoration: none; color: inherit;">{{ book.title }}</a></h3>
             <p style="color: var(--text-color); font-weight: 500;">von {{ book.author }}</p>
 
-            <div style="margin: 1rem 0;">
-                <span class="badge badge-success">Zustand: {{ book.condition }}</span>
-                <p style="margin-top: 0.5rem; font-size: 0.875rem;">Besitzer: {{ book.owner_name }}</p>
+            <div style="margin: 0.75rem 0; display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;">
+                <span class="badge badge-success">{{ book.condition }}</span>
+                {% if book.genre and book.genre != 'Sonstiges' %}
+                <span class="badge badge-genre">{{ book.genre }}</span>
+                {% endif %}
             </div>
 
-            <div
-                style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--card-border); display: flex; gap: 0.5rem; flex-direction: column;">
+            {% if book.description %}
+            <p style="font-size: 0.83rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 0.5rem; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">{{ book.description }}</p>
+            {% endif %}
+
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0;">Besitzer: {{ book.owner_name }}</p>
+
+            <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--card-border); display: flex; gap: 0.5rem; flex-direction: column;">
                 <a href="{{ url_for('book_detail', book_id=book.id) }}" class="btn"
                     style="background: rgba(255,255,255,0.1); border: 1px solid var(--card-border); text-align: center; margin-bottom: 0.25rem;">Details
                     ansehen</a>
@@ -111,11 +128,10 @@
         </article>
         {% else %}
         <div class="glass" style="grid-column: 1 / -1; padding: 3rem; text-align: center;">
-            {% if q or condition %}
+            {% if q or condition or genre %}
             <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
             <h2>Keine passenden Bücher gefunden</h2>
-            <p style="margin-bottom: 1.5rem;">Zu deiner Suchanfrage {% if q %}„<strong>{{ q }}</strong>“{% endif %}
-                wurden keine verfügbaren Bücher gefunden.</p>
+            <p style="margin-bottom: 1.5rem;">Zu deiner Suchanfrage {% if q %}„<strong>{{ q }}</strong>"{% endif %}{% if genre %} im Genre <strong>{{ genre }}</strong>{% endif %} wurden keine verfügbaren Bücher gefunden.</p>
             <a href="{{ url_for('index') }}" class="btn btn-primary">Alle verfügbaren Bücher anzeigen</a>
             {% else %}
             <h2>Aktuell keine Bücher verfügbar</h2>

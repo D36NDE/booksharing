@@ -82,9 +82,12 @@
             <h1 style="font-size: 2rem; margin-bottom: 0.5rem; line-height: 1.2;">{{ book.title }}</h1>
             <h2 style="font-size: 1.2rem; color: var(--primary); margin-bottom: 1.5rem; font-weight: 500;">von {{ book.author }}</h2>
 
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 10px; padding: 1.25rem; margin-bottom: 2rem;">
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 10px; padding: 1.25rem; margin-bottom: {% if book.description %}1rem{% else %}2rem{% endif %};">
                 <div style="margin-bottom: 0.75rem;">
                     <strong>Zustand:</strong> <span class="badge badge-success">{{ book.condition }}</span>
+                    {% if book.genre %}
+                    <span class="badge badge-genre" style="margin-left: 0.35rem;">{{ book.genre }}</span>
+                    {% endif %}
                 </div>
                 <div style="margin-bottom: 0.75rem;">
                     <strong>Angeboten von:</strong> <span>{{ book.owner_name }}</span>
@@ -98,6 +101,13 @@
                     {% endif %}
                 </div>
             </div>
+
+            {% if book.description %}
+            <div style="background: rgba(99, 102, 241, 0.06); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 10px; padding: 1.25rem; margin-bottom: 2rem;">
+                <strong style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--primary);">Klappentext</strong>
+                <p style="margin-top: 0.6rem; line-height: 1.7; color: var(--text-color); white-space: pre-line;">{{ book.description }}</p>
+            </div>
+            {% endif %}
 
             {% if book.status == 'AVAILABLE' %}
                 {% if g.user %}

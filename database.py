@@ -10,6 +10,17 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+def check_and_migrate_db(conn):
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA table_info(books)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if columns:
+        if 'genre' not in columns:
+            cursor.execute("ALTER TABLE books ADD COLUMN genre TEXT DEFAULT 'Sonstiges'")
+        if 'description' not in columns:
+            cursor.execute("ALTER TABLE books ADD COLUMN description TEXT")
+        conn.commit()
+
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -31,6 +42,8 @@ def init_db():
             title TEXT NOT NULL,
             author TEXT NOT NULL,
             condition TEXT NOT NULL,
+            genre TEXT DEFAULT 'Sonstiges',
+            description TEXT,
             owner_id INTEGER NOT NULL,
             status TEXT DEFAULT 'AVAILABLE',
             image_filename TEXT,
@@ -52,6 +65,7 @@ def init_db():
         )
     ''')
 
+    check_and_migrate_db(conn)
     conn.commit()
     conn.close()
 

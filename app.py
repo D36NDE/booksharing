@@ -11,6 +11,23 @@ app.secret_key = os.environ.get('SECRET_KEY', 'super_secret_dev_key_for_bookshar
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static/uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
+BOOK_GENRES = (
+    'Roman & Belletristik',
+    'Krimi & Thriller',
+    'Fantasy & Sci-Fi',
+    'Sachbuch & Ratgeber',
+    'Biografie & Geschichte',
+    'Kinder- & Jugendbuch',
+    'Klassiker',
+    'Sonstiges'
+)
+
+# Ensure database schema is migrated
+with app.app_context():
+    _migration_conn = database.get_db_connection()
+    database.check_and_migrate_db(_migration_conn)
+    _migration_conn.close()
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024  # 32 MB limit
 
@@ -121,9 +138,10 @@ def logout():
 def index():
     q = request.args.get('q', '').strip()
     condition = request.args.get('condition', '').strip()
+    genre = request.args.get('genre', '').strip()
 
     sql = '''
-        SELECT b.id, b.title, b.author, b.condition, b.image_filename, u.username as owner_name 
+        SELECT b.id, b.title, b.author, b.condition, b.genre, b.description, b.image_filename, u.username as owner_name 
         FROM books b 
         JOIN users u ON b.owner_id = u.id 
         WHERE b.status = 'AVAILABLE'
@@ -135,19 +153,23 @@ def index():
         params.append(g.user['id'])
 
     if q:
-        sql += ' AND (b.title LIKE ? OR b.author LIKE ? OR u.username LIKE ?)'
+        sql += ' AND (b.title LIKE ? OR b.author LIKE ? OR u.username LIKE ? OR b.description LIKE ?)'
         search_pattern = f'%{q}%'
-        params.extend([search_pattern, search_pattern, search_pattern])
+        params.extend([search_pattern, search_pattern, search_pattern, search_pattern])
 
     if condition:
         sql += ' AND b.condition = ?'
         params.append(condition)
 
+    if genre:
+        sql += ' AND b.genre = ?'
+        params.append(genre)
+
     sql += ' ORDER BY b.id DESC'
 
     books = g.db.execute(sql, params).fetchall()
     
-    return render_template('index.html', books=books, q=q, condition=condition)
+    return render_template('index.html', books=books, q=q, condition=condition, genre=genre, genres=BOOK_GENRES)
 
 @app.route('/my-books', methods=['GET', 'POST'])
 def my_books():
@@ -156,9 +178,11 @@ def my_books():
         return redirect(url_for('login', next=url_for('my_books')))
         
     if request.method == 'POST':
-        title = request.form.get('title')
-        author = request.form.get('author')
-        condition = request.form.get('condition')
+        title = request.form.get('title', '').strip()
+        author = request.form.get('author', '').strip()
+        condition = request.form.get('condition', '').strip()
+        genre = request.form.get('genre', 'Sonstiges').strip() or 'Sonstiges'
+        description = request.form.get('description', '').strip() or None
         
         image_filename = None
         if 'image' in request.files:
@@ -170,17 +194,17 @@ def my_books():
                 image_filename = unique_filename
         
         if title and author and condition:
-            g.db.execute('INSERT INTO books (title, author, condition, owner_id, image_filename) VALUES (?, ?, ?, ?, ?)',
-                         (title, author, condition, g.user['id'], image_filename))
+            g.db.execute('INSERT INTO books (title, author, condition, genre, description, owner_id, image_filename) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                         (title, author, condition, genre, description, g.user['id'], image_filename))
             g.db.commit()
             flash('Buch erfolgreich hinzugefügt!', 'success')
         else:
-            flash('Bitte alle Felder ausfüllen.', 'error')
+            flash('Bitte alle Pflichtfelder (Titel, Autor, Zustand) ausfüllen.', 'error')
             
         return redirect(url_for('my_books'))
         
     books = g.db.execute('SELECT * FROM books WHERE owner_id = ? ORDER BY id DESC', (g.user['id'],)).fetchall()
-    return render_template('my_books.html', books=books)
+    return render_template('my_books.html', books=books, genres=BOOK_GENRES)
 
 @app.route('/my-books/edit/<int:book_id>', methods=['GET', 'POST'])
 def edit_book(book_id):
@@ -201,11 +225,13 @@ def edit_book(book_id):
         title = request.form.get('title', '').strip()
         author = request.form.get('author', '').strip()
         condition = request.form.get('condition', '').strip()
+        genre = request.form.get('genre', 'Sonstiges').strip() or 'Sonstiges'
+        description = request.form.get('description', '').strip() or None
         remove_image = request.form.get('remove_image') == '1'
 
         if not title or not author or not condition:
             flash('Bitte alle Pflichtfelder (Titel, Autor, Zustand) ausfüllen.', 'error')
-            return render_template('edit_book.html', book=book)
+            return render_template('edit_book.html', book=book, genres=BOOK_GENRES)
 
         image_filename = book['image_filename']
 
@@ -226,14 +252,14 @@ def edit_book(book_id):
                 image_filename = unique_filename
 
         g.db.execute(
-            'UPDATE books SET title = ?, author = ?, condition = ?, image_filename = ? WHERE id = ?',
-            (title, author, condition, image_filename, book_id)
+            'UPDATE books SET title = ?, author = ?, condition = ?, genre = ?, description = ?, image_filename = ? WHERE id = ?',
+            (title, author, condition, genre, description, image_filename, book_id)
         )
         g.db.commit()
         flash('Buch erfolgreich aktualisiert!', 'success')
         return redirect(url_for('my_books'))
 
-    return render_template('edit_book.html', book=book)
+    return render_template('edit_book.html', book=book, genres=BOOK_GENRES)
 
 @app.route('/my-books/delete/<int:book_id>', methods=['POST'])
 def delete_book(book_id):
@@ -400,7 +426,7 @@ def impressum():
 @app.route('/book/<int:book_id>')
 def book_detail(book_id):
     book = g.db.execute('''
-        SELECT b.id, b.title, b.author, b.condition, b.image_filename, b.status, u.username as owner_name 
+        SELECT b.id, b.title, b.author, b.condition, b.genre, b.description, b.image_filename, b.status, u.username as owner_name 
         FROM books b 
         JOIN users u ON b.owner_id = u.id 
         WHERE b.id = ?
