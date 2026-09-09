@@ -127,6 +127,41 @@ nav ul a:hover {
   color: var(--primary);
 }
 
+.nav-link-requests {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  font-size: 0.725rem;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(135deg, #ec4899 0%, #f43f5e 100%);
+  border-radius: 999px;
+  box-shadow: 0 0 10px rgba(236, 72, 153, 0.6);
+  line-height: 1;
+  animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(236, 72, 153, 0.6);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 14px rgba(236, 72, 153, 0.9);
+  }
+}
+
 /* Buttons */
 .btn {
   display: inline-block;
@@ -273,6 +308,7 @@ input:focus, select:focus {
 .badge-success { background: rgba(16, 185, 129, 0.2); color: var(--success); }
 .badge-warning { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
 .badge-danger { background: rgba(239, 68, 68, 0.2); color: var(--error); }
+.badge-secondary { background: rgba(148, 163, 184, 0.18); color: var(--text-muted); }
 
 /* Flash Messages */
 .flash-messages {

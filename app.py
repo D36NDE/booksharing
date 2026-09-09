@@ -43,11 +43,20 @@ def before_request():
         user = g.db.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],)).fetchone()
         if user:
             g.user = user
+            pending_count = g.db.execute('''
+                SELECT COUNT(*) as count
+                FROM exchange_requests er
+                JOIN books tb ON er.target_book_id = tb.id
+                WHERE tb.owner_id = ? AND er.status = 'PENDING'
+            ''', (user['id'],)).fetchone()
+            g.pending_requests_count = pending_count['count'] if pending_count else 0
         else:
             session.pop('user_id', None)
             g.user = None
+            g.pending_requests_count = 0
     else:
         g.user = None
+        g.pending_requests_count = 0
 
 @app.teardown_request
 def teardown_request(exception):
@@ -273,6 +282,15 @@ def request_book(book_id):
         flash('Du kannst nicht dein eigenes Buch anfragen.', 'error')
         return redirect(url_for('index'))
 
+    # Check if user already has an active pending request for this target book
+    existing_req = g.db.execute(
+        'SELECT id FROM exchange_requests WHERE requester_id = ? AND target_book_id = ? AND status = "PENDING"',
+        (g.user['id'], book_id)
+    ).fetchone()
+    if existing_req:
+        flash('Du hast für dieses Buch bereits eine offene Tauschanfrage gestellt.', 'info')
+        return redirect(url_for('requests_page'))
+
     if request.method == 'POST':
         offered_book_id = request.form.get('offered_book_id')
         if offered_book_id:
@@ -280,15 +298,15 @@ def request_book(book_id):
             offered_book = g.db.execute('SELECT * FROM books WHERE id = ? AND owner_id = ? AND status = "AVAILABLE"',
                                         (offered_book_id, g.user['id'])).fetchone()
             if not offered_book:
-                flash('Ungültiges Buch angeboten.', 'error')
+                flash('Ungültiges Buch angeboten oder nicht mehr verfügbar.', 'error')
             else:
                 g.db.execute('INSERT INTO exchange_requests (requester_id, target_book_id, offered_book_id) VALUES (?, ?, ?)',
                              (g.user['id'], book_id, offered_book_id))
-                # Optionally mark books as 'PENDING'
+                # Mark both books as 'PENDING'
                 g.db.execute('UPDATE books SET status = "PENDING" WHERE id IN (?, ?)', (book_id, offered_book_id))
                 g.db.commit()
                 flash('Tauschanfrage erfolgreich gesendet!', 'success')
-                return redirect(url_for('index'))
+                return redirect(url_for('requests_page'))
                 
     # Get user's available books to offer
     my_books = g.db.execute('SELECT * FROM books WHERE owner_id = ? AND status = "AVAILABLE"', (g.user['id'],)).fetchall()
@@ -311,18 +329,43 @@ def requests_page():
             WHERE er.id = ?
         ''', (req_id,)).fetchone()
         
-        if req and req['target_owner_id'] == g.user['id'] and req['status'] == 'PENDING':
-            if action == 'accept':
+        if req and req['status'] == 'PENDING':
+            # Case A: Target owner accepts the request
+            if action == 'accept' and req['target_owner_id'] == g.user['id']:
                 g.db.execute('UPDATE exchange_requests SET status = "ACCEPTED" WHERE id = ?', (req_id,))
                 g.db.execute('UPDATE books SET status = "EXCHANGED" WHERE id IN (?, ?)', (req['t_id'], req['o_id']))
-                # Any other pending requests involving these books should probably be rejected, but skipping for simplicity
+                
+                # Auto-reject competing pending requests and release their books
+                competing_reqs = g.db.execute('''
+                    SELECT id, target_book_id, offered_book_id
+                    FROM exchange_requests
+                    WHERE id != ? AND status = 'PENDING'
+                      AND (target_book_id IN (?, ?) OR offered_book_id IN (?, ?))
+                ''', (req_id, req['t_id'], req['o_id'], req['t_id'], req['o_id'])).fetchall()
+
+                for c_req in competing_reqs:
+                    g.db.execute('UPDATE exchange_requests SET status = "REJECTED" WHERE id = ?', (c_req['id'],))
+                    if c_req['offered_book_id'] not in (req['t_id'], req['o_id']):
+                        g.db.execute('UPDATE books SET status = "AVAILABLE" WHERE id = ?', (c_req['offered_book_id'],))
+                    if c_req['target_book_id'] not in (req['t_id'], req['o_id']):
+                        g.db.execute('UPDATE books SET status = "AVAILABLE" WHERE id = ?', (c_req['target_book_id'],))
+
                 g.db.commit()
-                flash('Anfrage akzeptiert!', 'success')
-            elif action == 'reject':
+                flash('Tauschanfrage akzeptiert! Die Kontaktdaten wurden freigeschaltet.', 'success')
+                
+            # Case B: Target owner rejects the request
+            elif action == 'reject' and req['target_owner_id'] == g.user['id']:
                 g.db.execute('UPDATE exchange_requests SET status = "REJECTED" WHERE id = ?', (req_id,))
                 g.db.execute('UPDATE books SET status = "AVAILABLE" WHERE id IN (?, ?)', (req['t_id'], req['o_id']))
                 g.db.commit()
-                flash('Anfrage abgelehnt.', 'info')
+                flash('Anfrage abgelehnt. Beide Bücher sind wieder verfügbar.', 'info')
+
+            # Case C: Requester cancels their own pending request
+            elif action == 'cancel' and req['requester_id'] == g.user['id']:
+                g.db.execute('UPDATE exchange_requests SET status = "CANCELLED" WHERE id = ?', (req_id,))
+                g.db.execute('UPDATE books SET status = "AVAILABLE" WHERE id IN (?, ?)', (req['t_id'], req['o_id']))
+                g.db.commit()
+                flash('Tauschanfrage erfolgreich zurückgezogen. Beide Bücher stehen wieder zur Verfügung.', 'success')
                 
         return redirect(url_for('requests_page'))
 
@@ -334,6 +377,7 @@ def requests_page():
         JOIN books tb ON er.target_book_id = tb.id
         JOIN books ob ON er.offered_book_id = ob.id
         WHERE tb.owner_id = ?
+        ORDER BY er.id DESC
     ''', (g.user['id'],)).fetchall()
 
     outgoing_requests = g.db.execute('''
@@ -344,6 +388,7 @@ def requests_page():
         JOIN users u ON tb.owner_id = u.id
         JOIN books ob ON er.offered_book_id = ob.id
         WHERE er.requester_id = ?
+        ORDER BY er.id DESC
     ''', (g.user['id'],)).fetchall()
     
     return render_template('requests.html', incoming=incoming_requests, outgoing=outgoing_requests)

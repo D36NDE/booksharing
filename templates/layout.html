@@ -64,7 +64,14 @@
                 <li><a href="{{ url_for('index') }}">Entdecken</a></li>
                 {% if g.user %}
                 <li><a href="{{ url_for('my_books') }}">Meine Bücher</a></li>
-                <li><a href="{{ url_for('requests_page') }}">Anfragen</a></li>
+                <li>
+                    <a href="{{ url_for('requests_page') }}" class="nav-link-requests">
+                        Anfragen
+                        {% if g.pending_requests_count and g.pending_requests_count > 0 %}
+                        <span class="nav-badge" title="{{ g.pending_requests_count }} neue Tauschanfrage(n)">{{ g.pending_requests_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
                 <li><a href="{{ url_for('logout') }}">Logout ({{ g.user.username }})</a></li>
                 {% else %}
                 <li><a href="{{ url_for('login') }}" class="btn btn-primary" style="padding: 0.35rem 1.1rem; font-size: 0.9rem; line-height: 1.4;">Anmelden</a></li>
