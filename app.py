@@ -1,9 +1,12 @@
+import hashlib
 import logging
 import os
 import re
 import secrets
+import smtplib
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
+from email.mime.text import MIMEText
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, g, Response, abort
 from flask_wtf import CSRFProtect
@@ -63,6 +66,50 @@ REQUEST_CANCELLED = 'CANCELLED'
 
 BOOKS_PER_PAGE = 12
 EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+RESET_TOKEN_TTL_HOURS = 1
+
+# --- SMTP-Konfiguration für E-Mail-Versand (z.B. Passwort-Reset) ---
+# Funktioniert mit jedem Standard-SMTP-Anbieter (eigener Server, Gmail mit
+# App-Passwort, SendGrid/Mailgun/Postmark per SMTP-Relay, ...). Ohne gesetzte
+# SMTP_HOST-Variable wird der Versand übersprungen und nur geloggt.
+SMTP_HOST = os.environ.get('SMTP_HOST')
+SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
+SMTP_USERNAME = os.environ.get('SMTP_USERNAME')
+SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD')
+SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'true').lower() != 'false'
+MAIL_FROM = os.environ.get('MAIL_FROM', 'BookSharing <noreply@booksharing.net>')
+
+if not SMTP_HOST:
+    logging.getLogger(__name__).warning(
+        'SMTP_HOST ist nicht gesetzt - E-Mail-Versand (z.B. Passwort-Reset) ist deaktiviert. '
+        'Bitte SMTP_HOST/SMTP_PORT/SMTP_USERNAME/SMTP_PASSWORD/MAIL_FROM als '
+        'Umgebungsvariablen setzen, um den Versand zu aktivieren.'
+    )
+
+def send_email(to_address, subject, body_text):
+    """Best-effort E-Mail-Versand. Gibt True bei Erfolg zurück, sonst False -
+    Fehler landen im Server-Log, nie als Stacktrace beim Nutzer."""
+    if not SMTP_HOST:
+        logging.getLogger(__name__).error(
+            'E-Mail an %s konnte nicht gesendet werden: SMTP ist nicht konfiguriert.', to_address
+        )
+        return False
+    try:
+        msg = MIMEText(body_text, 'plain', 'utf-8')
+        msg['Subject'] = subject
+        msg['From'] = MAIL_FROM
+        msg['To'] = to_address
+
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+            if SMTP_USE_TLS:
+                server.starttls()
+            if SMTP_USERNAME and SMTP_PASSWORD:
+                server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.sendmail(MAIL_FROM, [to_address], msg.as_string())
+        return True
+    except (smtplib.SMTPException, OSError):
+        logging.getLogger(__name__).exception('E-Mail an %s konnte nicht gesendet werden.', to_address)
+        return False
 
 # Ensure database schema is migrated
 with app.app_context():
@@ -161,7 +208,7 @@ def teardown_request(exception):
 
 # --- Auth Routes ---
 @app.route('/login', methods=['GET', 'POST'])
-@limiter.limit('10 per minute')
+@limiter.limit('10 per minute', methods=['POST'])
 def login():
     if g.user:
         return redirect(url_for('index'))
@@ -181,7 +228,7 @@ def login():
     return render_template('login.html', next_url=next_url)
 
 @app.route('/register', methods=['GET', 'POST'])
-@limiter.limit('10 per hour')
+@limiter.limit('10 per hour', methods=['POST'])
 def register():
     if g.user:
         return redirect(url_for('index'))
@@ -218,6 +265,87 @@ def register():
 
     return render_template('register.html')
 
+@app.route('/forgot-password', methods=['GET', 'POST'])
+@limiter.limit('5 per hour', methods=['POST'])
+def forgot_password():
+    if g.user:
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip()
+
+        if email:
+            user = g.db.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
+            if user:
+                # Vorherige, noch offene Tokens für diesen Nutzer entwerten -
+                # es soll immer nur ein aktiver Reset-Link existieren.
+                g.db.execute('DELETE FROM password_reset_tokens WHERE user_id = ?', (user['id'],))
+
+                raw_token = secrets.token_urlsafe(32)
+                token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+                expires_at = (datetime.utcnow() + timedelta(hours=RESET_TOKEN_TTL_HOURS)).isoformat()
+
+                g.db.execute(
+                    'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)',
+                    (user['id'], token_hash, expires_at)
+                )
+                g.db.commit()
+
+                reset_url = url_for('reset_password', token=raw_token, _external=True)
+                send_email(
+                    user['email'],
+                    'Passwort zurücksetzen - BookSharing',
+                    f"Hallo {user['username']},\n\n"
+                    "du hast eine Passwort-Zurücksetzung für dein BookSharing-Konto angefordert.\n"
+                    f"Klicke auf folgenden Link, um ein neues Passwort zu vergeben (gültig für "
+                    f"{RESET_TOKEN_TTL_HOURS} Stunde):\n\n{reset_url}\n\n"
+                    "Falls du das nicht warst, kannst du diese E-Mail ignorieren - es passiert nichts."
+                )
+
+        # Immer dieselbe Meldung, unabhängig davon, ob die E-Mail existiert -
+        # sonst ließe sich über die Fehlermeldung erraten, welche E-Mails registriert sind.
+        flash('Falls ein Konto mit dieser E-Mail-Adresse existiert, haben wir einen Link zum '
+              'Zurücksetzen des Passworts gesendet.', 'info')
+        return redirect(url_for('login'))
+
+    return render_template('forgot_password.html')
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if g.user:
+        return redirect(url_for('index'))
+
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    reset_entry = g.db.execute(
+        'SELECT * FROM password_reset_tokens WHERE token_hash = ? AND used = 0',
+        (token_hash,)
+    ).fetchone()
+
+    if not reset_entry or datetime.fromisoformat(reset_entry['expires_at']) < datetime.utcnow():
+        flash('Dieser Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an.', 'error')
+        return redirect(url_for('forgot_password'))
+
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        password_confirm = request.form.get('password_confirm', '')
+
+        if len(password) < 8:
+            flash('Das Passwort muss mindestens 8 Zeichen lang sein.', 'error')
+            return render_template('reset_password.html', token=token)
+
+        if password != password_confirm:
+            flash('Die Passwörter stimmen nicht überein.', 'error')
+            return render_template('reset_password.html', token=token)
+
+        hashed = generate_password_hash(password, method='pbkdf2:sha256')
+        g.db.execute('UPDATE users SET password = ? WHERE id = ?', (hashed, reset_entry['user_id']))
+        g.db.execute('UPDATE password_reset_tokens SET used = 1 WHERE id = ?', (reset_entry['id'],))
+        g.db.commit()
+
+        flash('Dein Passwort wurde erfolgreich geändert. Du kannst dich jetzt anmelden.', 'success')
+        return redirect(url_for('login'))
+
+    return render_template('reset_password.html', token=token)
 
 @app.route('/logout')
 def logout():

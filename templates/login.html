@@ -34,7 +34,11 @@
         </div>
     </form>
 
-    <p style="text-align: center; margin-top: 1.5rem; font-size: 0.9em; color: var(--text-muted);">
+    <p style="text-align: center; margin-top: 1rem; font-size: 0.875em;">
+        <a href="{{ url_for('forgot_password') }}" style="color: var(--text-muted); text-decoration: none;">Passwort vergessen?</a>
+    </p>
+
+    <p style="text-align: center; margin-top: 1rem; font-size: 0.9em; color: var(--text-muted);">
         Noch kein Konto? <a href="{{ url_for('register') }}" style="color: var(--primary); text-decoration: none; font-weight: 500; transition: color 0.2s;">Jetzt registrieren</a>
     </p>
 </div>
