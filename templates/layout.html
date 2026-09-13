@@ -33,16 +33,6 @@
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-907T7BQTP8"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag() { dataLayer.push(arguments); }
-        gtag('js', new Date());
-
-        gtag('config', 'G-907T7BQTP8');
-    </script>
-
     {% block schema %}{% endblock %}
 </head>
 
@@ -101,9 +91,106 @@
             <div class="footer-links">
                 <a href="{{ url_for('impressum') }}">Impressum</a>
                 <a href="{{ url_for('datenschutz') }}">Datenschutz</a>
+                <a href="#" id="cookie-settings-link">Cookie-Einstellungen</a>
             </div>
         </div>
     </footer>
+
+    <div id="cookie-banner" class="cookie-banner glass" role="region" aria-label="Cookie-Einstellungen" hidden>
+        <div class="cookie-banner-text">
+            <strong>Cookie-Hinweis</strong>
+            <p>
+                Wir nutzen Google Analytics, um zu verstehen, wie BookSharing genutzt wird. Das laden wir nur mit
+                deiner Einwilligung. Technisch notwendige Cookies (z.B. für den Login) sind davon nicht betroffen.
+                Details in unserer <a href="{{ url_for('datenschutz') }}">Datenschutzerklärung</a>.
+            </p>
+        </div>
+        <div class="cookie-banner-actions">
+            <button type="button" id="cookie-decline" class="btn btn-secondary btn-sm">Nur notwendige</button>
+            <button type="button" id="cookie-accept" class="btn btn-primary btn-sm">Akzeptieren</button>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var CONSENT_KEY = 'cookie_consent'; // 'accepted' | 'declined'
+            var GA_ID = 'G-907T7BQTP8';
+
+            function loadGoogleAnalytics() {
+                if (window.__gaLoaded) return;
+                window.__gaLoaded = true;
+
+                window.dataLayer = window.dataLayer || [];
+                window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
+                gtag('js', new Date());
+                gtag('config', GA_ID);
+
+                var script = document.createElement('script');
+                script.async = true;
+                script.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+                document.head.appendChild(script);
+            }
+
+            function getConsent() {
+                try {
+                    return localStorage.getItem(CONSENT_KEY);
+                } catch (e) {
+                    return null;
+                }
+            }
+
+            function setConsent(value) {
+                try {
+                    localStorage.setItem(CONSENT_KEY, value);
+                } catch (e) {
+                    // localStorage blockiert (z.B. Private-Modus) - Banner erscheint dann bei jedem Aufruf erneut.
+                }
+            }
+
+            function showBanner() {
+                var banner = document.getElementById('cookie-banner');
+                if (banner) banner.hidden = false;
+            }
+
+            function hideBanner() {
+                var banner = document.getElementById('cookie-banner');
+                if (banner) banner.hidden = true;
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                var consent = getConsent();
+                if (consent === 'accepted') {
+                    loadGoogleAnalytics();
+                } else if (consent !== 'declined') {
+                    showBanner();
+                }
+
+                var acceptBtn = document.getElementById('cookie-accept');
+                var declineBtn = document.getElementById('cookie-decline');
+                var settingsLink = document.getElementById('cookie-settings-link');
+
+                if (acceptBtn) {
+                    acceptBtn.addEventListener('click', function () {
+                        setConsent('accepted');
+                        loadGoogleAnalytics();
+                        hideBanner();
+                    });
+                }
+                if (declineBtn) {
+                    declineBtn.addEventListener('click', function () {
+                        setConsent('declined');
+                        hideBanner();
+                    });
+                }
+                if (settingsLink) {
+                    settingsLink.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        showBanner();
+                    });
+                }
+            });
+        })();
+    </script>
 
 </body>
 
