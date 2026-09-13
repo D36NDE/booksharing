@@ -1,0 +1,208 @@
+{% extends "layout.html" %}
+
+{% block title %}Datenschutzerklärung - BookSharing{% endblock %}
+
+{% block meta %}
+<meta name="description" content="Datenschutzerklärung von BookSharing: Informationen zur Verarbeitung personenbezogener Daten gemäß DSGVO.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="{{ url_for('datenschutz', _external=True) }}">
+{% endblock %}
+
+{% block content %}
+<div class="glass fade-in" style="max-width: 800px; margin: 4rem auto; padding: 3rem;">
+    <h1>Datenschutzerklärung</h1>
+
+    <div class="form-group">
+        <h2>1. Verantwortlicher</h2>
+        <p>Verantwortlicher im Sinne der Datenschutz-Grundverordnung (DSGVO) ist:</p>
+        <p>
+            Dennis Dellemann - BookSharing<br>
+            c/o Autorenglück #57115<br>
+            Albert-Einstein-Straße 47<br>
+            02977 Hoyerswerda<br>
+            Deutschland
+        </p>
+        <p>Telefon: +49 152 07005857<br>E-Mail: d36nde@icloud.com</p>
+    </div>
+
+    <div class="form-group">
+        <h2>2. Allgemeines zur Datenverarbeitung</h2>
+        <p>
+            Wir verarbeiten personenbezogene Daten unserer Nutzer grundsätzlich nur, soweit dies zur Bereitstellung
+            einer funktionsfähigen Plattform sowie unserer Inhalte und Leistungen erforderlich ist. Die Verarbeitung
+            personenbezogener Daten erfolgt regelmäßig nur nach Einwilligung des Nutzers oder auf Grundlage einer
+            gesetzlichen Erlaubnis (insbesondere Art. 6 Abs. 1 lit. a, b und f DSGVO).
+        </p>
+    </div>
+
+    <div class="form-group">
+        <h2>3. Bereitstellung der Website / Server-Logfiles</h2>
+        <p>
+            Beim Aufruf unserer Website erhebt unser Hosting-Provider automatisiert Informationen, die dein Browser
+            an den Server übermittelt (Server-Logfiles). Dazu gehören: IP-Adresse, Datum und Uhrzeit der Anfrage,
+            aufgerufene Seite, verwendeter Browser und Betriebssystem sowie die Website, von der aus zugegriffen
+            wurde (Referrer-URL).
+        </p>
+        <p>
+            Die Erhebung dieser Daten ist für den Betrieb der Website technisch notwendig und erfolgt auf Grundlage
+            unseres berechtigten Interesses an einem sicheren und störungsfreien Betrieb (Art. 6 Abs. 1 lit. f
+            DSGVO). Zusätzlich nutzen wir IP-Adressen kurzzeitig, um Anmelde- und Registrierungsversuche zu
+            begrenzen (Rate-Limiting) und die Plattform so vor Missbrauch, etwa automatisierten
+            Passwort-Rateversuchen, zu schützen; diese Daten werden nicht dauerhaft gespeichert.
+        </p>
+    </div>
+
+    <div class="form-group">
+        <h2>4. Cookies (technisch notwendig)</h2>
+        <p>
+            Wir setzen ein sogenanntes Session-Cookie ein, um dich nach dem Login angemeldet zu halten und
+            Formulare vor Cross-Site-Request-Forgery (CSRF) zu schützen. Dieses Cookie enthält keine
+            personenbezogenen Klardaten, sondern lediglich eine verschlüsselt signierte Kennung, und wird gelöscht,
+            sobald du dich abmeldest oder deine Browsersitzung beendest.
+        </p>
+        <p>
+            Diese Cookies sind für den Betrieb der Website zwingend erforderlich und daher gemäß § 25 Abs. 2 Nr. 2
+            TDDDG (Telekommunikation-Digitale-Dienste-Datenschutz-Gesetz) ohne gesonderte Einwilligung zulässig.
+        </p>
+    </div>
+
+    <div class="form-group">
+        <h2>5. Registrierung und Nutzerkonto</h2>
+        <p>
+            Um Bücher anzubieten oder Tauschanfragen zu stellen, ist die Erstellung eines Nutzerkontos erforderlich.
+            Dabei erheben wir Benutzername, E-Mail-Adresse und Passwort. Das Passwort wird ausschließlich in
+            verschlüsselter (gehashter) Form gespeichert; wir selbst haben keinen Zugriff auf dein Klartextpasswort.
+        </p>
+        <p>
+            Die Verarbeitung dieser Daten erfolgt zur Erfüllung des Nutzungsvertrags über die Bereitstellung der
+            Tauschplattform (Art. 6 Abs. 1 lit. b DSGVO). Ohne diese Angaben ist eine Registrierung nicht möglich.
+        </p>
+    </div>
+
+    <div class="form-group">
+        <h2>6. Buchangebote und Coverbilder</h2>
+        <p>
+            Wenn du ein Buch zum Tausch anbietest, verarbeiten wir die von dir angegebenen Informationen (Titel,
+            Autor, Zustand, Genre, Beschreibung) sowie ein optional von dir hochgeladenes Coverbild. Diese Angaben
+            sind für alle Besucher der Plattform öffentlich sichtbar, solange das Buchangebot besteht.
+        </p>
+        <p>
+            Rechtsgrundlage ist die Erfüllung des Nutzungsvertrags (Art. 6 Abs. 1 lit. b DSGVO). Nach dem Löschen
+            eines Buchangebots wird ein hochgeladenes Bild von unserem Server entfernt.
+        </p>
+    </div>
+
+    <div class="form-group">
+        <h2>7. Tauschanfragen und Weitergabe der E-Mail-Adresse</h2>
+        <p>
+            Stellst du eine Tauschanfrage oder erhältst eine solche, werden dein Benutzername sowie die betroffenen
+            Buchtitel dem jeweils anderen Nutzer angezeigt. <strong>Nimmt der Buchbesitzer eine Tauschanfrage an,
+            wird zusätzlich die E-Mail-Adresse beider beteiligter Nutzer für den jeweils anderen sichtbar</strong>,
+            damit ihr die Übergabe der Bücher untereinander organisieren könnt.
+        </p>
+        <p>
+            Diese Weitergabe ist für die Durchführung des von dir gewünschten Buchtauschs erforderlich
+            (Art. 6 Abs. 1 lit. b DSGVO). Ohne die Freigabe der E-Mail-Adresse wäre eine Kontaktaufnahme zwischen den
+            Tauschpartnern über die Plattform nicht möglich.
+        </p>
+    </div>
+
+    <div class="form-group">
+        <h2>8. Google Analytics</h2>
+        <p>
+            Diese Website nutzt Google Analytics, einen Webanalysedienst der Google Ireland Limited, Gordon House,
+            Barrow Street, Dublin 4, Irland ("Google"). Google Analytics verwendet Cookies bzw. ähnliche
+            Technologien, die eine Analyse der Benutzung unserer Website durch dich ermöglichen. Die dabei erzeugten
+            Informationen (u.a. gekürzte IP-Adresse, besuchte Seiten, Verweildauer, verwendetes Gerät) werden in der
+            Regel an einen Server von Google in den USA übertragen und dort gespeichert.
+        </p>
+        <p>
+            Die Nutzung dieses Dienstes erfolgt auf Grundlage deiner Einwilligung (Art. 6 Abs. 1 lit. a DSGVO,
+            § 25 Abs. 1 TDDDG). Du kannst deine Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen, etwa
+            indem du das Setzen von Cookies durch Google in deinen Browsereinstellungen unterbindest oder das von
+            Google bereitgestellte
+            <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer">Browser-Add-on
+            zur Deaktivierung von Google Analytics</a> installierst.
+        </p>
+        <p>
+            Da Google ein US-Unternehmen ist, kann eine Datenübermittlung in die USA erfolgen. Google ist unter dem
+            EU-US Data Privacy Framework zertifiziert, das ein angemessenes Datenschutzniveau gewährleisten soll.
+            Weitere Informationen findest du in der
+            <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Datenschutzerklärung
+            von Google</a>.
+        </p>
+    </div>
+
+    <div class="form-group">
+        <h2>9. PayPal-Spendenlink</h2>
+        <p>
+            Auf unserer Startseite verlinken wir zu einer PayPal-Spendenseite (paypal.me). Beim Anklicken dieses
+            Links verlässt du unsere Website; die dortige Datenverarbeitung erfolgt ausschließlich durch PayPal
+            (Europe) S.à r.l. et Cie, S.C.A., 22-24 Boulevard Royal, L-2449 Luxembourg, in eigener Verantwortung. Wir
+            selbst erhalten dabei keine Zahlungs- oder Kontodaten. Informationen dazu findest du in der
+            <a href="https://www.paypal.com/de/webapps/mpp/ua/privacy-full" target="_blank" rel="noopener noreferrer">Datenschutzerklärung
+            von PayPal</a>.
+        </p>
+    </div>
+
+    <div class="form-group">
+        <h2>10. Empfänger und Auftragsverarbeiter</h2>
+        <p>
+            Wir setzen für den Betrieb der Website einen Hosting-Provider ein, der in unserem Auftrag und auf
+            unsere Weisung hin personenbezogene Daten verarbeitet (Auftragsverarbeitung gemäß Art. 28 DSGVO). Eine
+            Übermittlung deiner Daten an sonstige Dritte findet nur statt, soweit dies in dieser
+            Datenschutzerklärung beschrieben ist (siehe insbesondere Ziffer 7 und 8) oder wir gesetzlich dazu
+            verpflichtet sind.
+        </p>
+    </div>
+
+    <div class="form-group">
+        <h2>11. Speicherdauer</h2>
+        <p>
+            Wir speichern personenbezogene Daten nur so lange, wie dies für die genannten Zwecke erforderlich ist
+            oder gesetzliche Aufbewahrungsfristen dies vorschreiben. Kontodaten werden gelöscht, wenn du dein Konto
+            löschen lässt; Buchangebote und zugehörige Bilder werden mit dem Löschen des jeweiligen Angebots
+            entfernt. Um dein Konto löschen zu lassen, wende dich bitte an die oben genannte E-Mail-Adresse.
+        </p>
+    </div>
+
+    <div class="form-group">
+        <h2>12. Deine Rechte</h2>
+        <p>Dir stehen als betroffener Person grundsätzlich folgende Rechte zu:</p>
+        <p>
+            Recht auf Auskunft (Art. 15 DSGVO), Recht auf Berichtigung (Art. 16 DSGVO), Recht auf Löschung
+            (Art. 17 DSGVO), Recht auf Einschränkung der Verarbeitung (Art. 18 DSGVO), Recht auf
+            Datenübertragbarkeit (Art. 20 DSGVO) sowie das Recht auf Widerspruch gegen die Verarbeitung
+            (Art. 21 DSGVO). Erteilte Einwilligungen (z.B. zu Google Analytics) kannst du jederzeit mit Wirkung für
+            die Zukunft widerrufen.
+        </p>
+        <p>
+            Darüber hinaus hast du das Recht, dich bei einer Datenschutz-Aufsichtsbehörde über die Verarbeitung
+            deiner personenbezogenen Daten durch uns zu beschweren.
+        </p>
+    </div>
+
+    <div class="form-group">
+        <h2>13. Datensicherheit</h2>
+        <p>
+            Wir setzen technische Maßnahmen ein, um deine Daten zu schützen, insbesondere eine verschlüsselte
+            Übertragung (TLS/SSL) sowie die Speicherung von Passwörtern ausschließlich in gehashter Form. Dennoch
+            weisen wir darauf hin, dass die Datenübertragung im Internet grundsätzlich Sicherheitslücken aufweisen
+            kann; ein lückenloser Schutz vor unberechtigtem Zugriff ist nicht möglich.
+        </p>
+    </div>
+
+    <div class="form-group">
+        <h2>14. Aktualität und Änderung dieser Datenschutzerklärung</h2>
+        <p>
+            Diese Datenschutzerklärung ist aktuell gültig (Stand: {{ current_year }}). Durch die Weiterentwicklung
+            unserer Website oder aufgrund geänderter gesetzlicher Vorgaben kann es notwendig werden, diese
+            Datenschutzerklärung zu ändern.
+        </p>
+    </div>
+
+    <div style="margin-top: 3rem;">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Zurück zur Startseite</a>
+    </div>
+</div>
+{% endblock %}
