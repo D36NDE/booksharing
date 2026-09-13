@@ -12,6 +12,7 @@
     <div class="glass" style="flex: 1; min-width: 300px; padding: 2rem; align-self: flex-start;">
         <h2>Neues Buch anbieten</h2>
         <form method="POST" action="{{ url_for('my_books') }}" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label for="title">Titel des Buches</label>
                 <input type="text" id="title" name="title" required>
@@ -92,6 +93,7 @@
                     </button>
                     {% else %}
                     <form method="POST" action="{{ url_for('delete_book', book_id=book.id) }}" onsubmit="return confirm('Möchtest du &quot;{{ book.title|e }}&quot; wirklich löschen?');" style="flex: 1;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-danger btn-sm" style="width: 100%;">
                             🗑️ Löschen
                         </button>

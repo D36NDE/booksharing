@@ -21,6 +21,30 @@ def check_and_migrate_db(conn):
             cursor.execute("ALTER TABLE books ADD COLUMN description TEXT")
         conn.commit()
 
+    create_indexes(conn)
+
+    # Best-effort: verhindert neue Accounts mit doppelter E-Mail, ohne bei
+    # bereits vorhandenen Duplikaten die komplette Migration scheitern zu lassen.
+    try:
+        cursor.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique "
+            "ON users (email) WHERE email IS NOT NULL AND email != ''"
+        )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.rollback()
+
+
+def create_indexes(conn):
+    cursor = conn.cursor()
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_books_owner_id ON books (owner_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_books_status ON books (status)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_exchange_requester_id ON exchange_requests (requester_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_exchange_target_book_id ON exchange_requests (target_book_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_exchange_offered_book_id ON exchange_requests (offered_book_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_exchange_status ON exchange_requests (status)')
+    conn.commit()
+
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()

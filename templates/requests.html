@@ -45,10 +45,12 @@
                     {% if req.status == 'PENDING' %}
                     <div style="display: flex; gap: 0.5rem;">
                         <form method="POST" action="{{ url_for('requests_page') }}" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="request_id" value="{{ req.id }}">
                             <button type="submit" name="action" value="accept" class="btn btn-primary btn-sm">Annehmen</button>
                         </form>
                         <form method="POST" action="{{ url_for('requests_page') }}" style="display: inline;" onsubmit="return confirm('Möchtest du diese Anfrage ablehnen? Beide Bücher werden wieder freigegeben.');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="request_id" value="{{ req.id }}">
                             <button type="submit" name="action" value="reject" class="btn btn-secondary btn-sm">Ablehnen</button>
                         </form>
@@ -101,6 +103,7 @@
 
                     {% if req.status == 'PENDING' %}
                     <form method="POST" action="{{ url_for('requests_page') }}" style="display: inline;" onsubmit="return confirm('Möchtest du diese Tauschanfrage wirklich zurückziehen? Beide Bücher stehen danach wieder für andere zur Verfügung.');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="request_id" value="{{ req.id }}">
                         <button type="submit" name="action" value="cancel" class="btn btn-danger btn-sm">Anfrage zurückziehen</button>
                     </form>

@@ -64,11 +64,25 @@
     </div>
 
     <!-- Genre Filter Chips -->
-    <div class="genre-chips">
-        <a href="{{ url_for('index', q=q, condition=condition) }}" class="genre-chip {% if not genre %}active{% endif %}">Alle</a>
-        {% for g_name in genres %}
-        <a href="{{ url_for('index', q=q, condition=condition, genre=g_name) }}" class="genre-chip {% if genre == g_name %}active{% endif %}">{{ g_name }}</a>
-        {% endfor %}
+    <div class="filter-bar">
+        <div class="filter-group">
+            <span class="filter-label">Genre</span>
+            <div class="genre-chips">
+                <a href="{{ url_for('index', q=q, condition=condition) }}" class="genre-chip {% if not genre %}active{% endif %}">Alle</a>
+                {% for g_name in genres %}
+                <a href="{{ url_for('index', q=q, condition=condition, genre=g_name) }}" class="genre-chip {% if genre == g_name %}active{% endif %}">{{ g_name }}</a>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="filter-group">
+            <span class="filter-label">Zustand</span>
+            <div class="condition-chips">
+                <a href="{{ url_for('index', q=q, genre=genre) }}" class="condition-chip {% if not condition %}condition-chip-active{% endif %}">Alle</a>
+                <a href="{{ url_for('index', q=q, genre=genre, condition='Wie neu') }}" class="condition-chip {% if condition == 'Wie neu' %}condition-chip-active{% endif %}">✨ Wie neu</a>
+                <a href="{{ url_for('index', q=q, genre=genre, condition='Gut') }}" class="condition-chip {% if condition == 'Gut' %}condition-chip-active{% endif %}">👍 Gut</a>
+                <a href="{{ url_for('index', q=q, genre=genre, condition='Akzeptabel') }}" class="condition-chip {% if condition == 'Akzeptabel' %}condition-chip-active{% endif %}">📖 Akzeptabel</a>
+            </div>
+        </div>
     </div>
 
     {% if q or condition or genre %}
@@ -144,6 +158,18 @@
         </div>
         {% endfor %}
     </div>
+
+    {% if total_pages and total_pages > 1 %}
+    <nav class="pagination" aria-label="Seiten" style="display: flex; justify-content: center; align-items: center; gap: 0.75rem; margin-top: 2rem;">
+        {% if page > 1 %}
+        <a href="{{ url_for('index', q=q, condition=condition, genre=genre, page=page - 1) }}" class="btn" style="background: rgba(255,255,255,0.1); border: 1px solid var(--card-border);">&larr; Zurück</a>
+        {% endif %}
+        <span style="color: var(--text-muted); font-size: 0.9rem;">Seite {{ page }} von {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="{{ url_for('index', q=q, condition=condition, genre=genre, page=page + 1) }}" class="btn btn-primary">Weiter &rarr;</a>
+        {% endif %}
+    </nav>
+    {% endif %}
 </section>
 
 <!-- SEO Content / Informationsbereich -->
