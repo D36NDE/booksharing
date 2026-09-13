@@ -106,6 +106,7 @@ def send_email(to_address, subject, body_text):
             if SMTP_USERNAME and SMTP_PASSWORD:
                 server.login(SMTP_USERNAME, SMTP_PASSWORD)
             server.sendmail(MAIL_FROM, [to_address], msg.as_string())
+        logging.getLogger(__name__).info('E-Mail "%s" erfolgreich an %s gesendet.', subject, to_address)
         return True
     except (smtplib.SMTPException, OSError):
         logging.getLogger(__name__).exception('E-Mail an %s konnte nicht gesendet werden.', to_address)
@@ -251,7 +252,7 @@ def register():
             return render_template('register.html')
 
         user = g.db.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
-        existing_email = g.db.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
+        existing_email = g.db.execute('SELECT id FROM users WHERE LOWER(email) = LOWER(?)', (email,)).fetchone()
         if user:
             flash('Benutzername existiert bereits.', 'error')
         elif existing_email:
@@ -275,7 +276,9 @@ def forgot_password():
         email = request.form.get('email', '').strip()
 
         if email:
-            user = g.db.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
+            # Case-insensitiver Abgleich: Nutzer erinnern sich oft nicht mehr,
+            # in welcher Groß-/Kleinschreibung sie ihre E-Mail registriert haben.
+            user = g.db.execute('SELECT * FROM users WHERE LOWER(email) = LOWER(?)', (email,)).fetchone()
             if user:
                 # Vorherige, noch offene Tokens für diesen Nutzer entwerten -
                 # es soll immer nur ein aktiver Reset-Link existieren.
@@ -300,6 +303,12 @@ def forgot_password():
                     f"Klicke auf folgenden Link, um ein neues Passwort zu vergeben (gültig für "
                     f"{RESET_TOKEN_TTL_HOURS} Stunde):\n\n{reset_url}\n\n"
                     "Falls du das nicht warst, kannst du diese E-Mail ignorieren - es passiert nichts."
+                )
+            else:
+                # Kein Konto zu dieser E-Mail gefunden - bewusst kein Hinweis für den
+                # anfragenden Nutzer (siehe unten), aber fürs Server-Log zur Diagnose.
+                logging.getLogger(__name__).info(
+                    'Passwort-Reset angefragt für unbekannte E-Mail-Adresse: %s', email
                 )
 
         # Immer dieselbe Meldung, unabhängig davon, ob die E-Mail existiert -
