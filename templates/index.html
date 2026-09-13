@@ -79,6 +79,7 @@
             <div class="condition-chips">
                 <a href="{{ url_for('index', q=q, genre=genre) }}" class="condition-chip {% if not condition %}condition-chip-active{% endif %}">Alle</a>
                 <a href="{{ url_for('index', q=q, genre=genre, condition='Wie neu') }}" class="condition-chip {% if condition == 'Wie neu' %}condition-chip-active{% endif %}">✨ Wie neu</a>
+                <a href="{{ url_for('index', q=q, genre=genre, condition='Sehr gut') }}" class="condition-chip {% if condition == 'Sehr gut' %}condition-chip-active{% endif %}">🌟 Sehr gut</a>
                 <a href="{{ url_for('index', q=q, genre=genre, condition='Gut') }}" class="condition-chip {% if condition == 'Gut' %}condition-chip-active{% endif %}">👍 Gut</a>
                 <a href="{{ url_for('index', q=q, genre=genre, condition='Akzeptabel') }}" class="condition-chip {% if condition == 'Akzeptabel' %}condition-chip-active{% endif %}">📖 Akzeptabel</a>
             </div>
