@@ -19,6 +19,13 @@ from werkzeug.utils import secure_filename
 
 import database
 
+# Python filtert Log-Nachrichten unterhalb von WARNING standardmäßig komplett
+# heraus, wenn kein Handler konfiguriert ist. Ohne diese Zeile würden alle
+# .info()-Aufrufe in diesem Modul (z.B. "E-Mail erfolgreich gesendet") still-
+# schweigend verschwinden, unabhängig davon, was tatsächlich passiert - das hat
+# uns beim Debuggen des Passwort-Reset-Mailversands unnötig lange aufgehalten.
+logging.basicConfig(level=logging.INFO)
+
 app = Flask(__name__)
 
 _secret_key = os.environ.get('SECRET_KEY')
