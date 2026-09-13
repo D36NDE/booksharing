@@ -29,8 +29,12 @@ fail() { echo "❌ $*" >&2; exit 1; }
 cd "$APP_DIR" || fail "App-Verzeichnis $APP_DIR nicht gefunden."
 
 # --- 0. Sicherstellen, dass keine lokalen Änderungen im Weg sind ---
-if [ -n "$(git status --porcelain)" ]; then
-    fail "Es gibt uncommittete lokale Änderungen in $APP_DIR. Bitte erst klären (git status), dann erneut deployen."
+# Bewusst nur versionierte Dateien prüfen (git diff), nicht beliebige
+# unversionierte Dateien im Ordner (z.B. Log-Reste, versehentlich
+# angelegte Dateien) - die würden echten Deploys sonst grundlos im Weg
+# stehen, ohne mit "git pull" tatsächlich zu kollidieren.
+if ! git diff --quiet || ! git diff --cached --quiet; then
+    fail "Es gibt uncommittete Änderungen an versionierten Dateien in $APP_DIR. Bitte erst klären (git status / git diff), dann erneut deployen."
 fi
 
 # --- 1. Datenbank sichern (falls vorhanden) ---
