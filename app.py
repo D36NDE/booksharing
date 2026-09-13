@@ -3,6 +3,7 @@ import os
 import re
 import secrets
 import uuid
+from datetime import datetime
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, g, Response, abort
 from flask_wtf import CSRFProtect
@@ -562,6 +563,10 @@ def requests_page():
 def impressum():
     return render_template('impressum.html')
 
+@app.route('/datenschutz')
+def datenschutz():
+    return render_template('datenschutz.html', current_year=datetime.now().year)
+
 @app.route('/book/<int:book_id>')
 def book_detail(book_id):
     book = g.db.execute('''
@@ -596,6 +601,7 @@ def sitemap():
     pages = [
         {'loc': url_for('index', _external=True), 'changefreq': 'daily', 'priority': '1.0'},
         {'loc': url_for('impressum', _external=True), 'changefreq': 'monthly', 'priority': '0.3'},
+        {'loc': url_for('datenschutz', _external=True), 'changefreq': 'monthly', 'priority': '0.3'},
         {'loc': url_for('login', _external=True), 'changefreq': 'monthly', 'priority': '0.5'},
         {'loc': url_for('register', _external=True), 'changefreq': 'monthly', 'priority': '0.5'}
     ]
