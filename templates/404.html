@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+
+{% block title %}Seite nicht gefunden - BookSharing{% endblock %}
+
+{% block meta %}
+<meta name="robots" content="noindex, follow">
+{% endblock %}
+
+{% block content %}
+<div class="glass" style="max-width: 560px; margin: 4rem auto; padding: 3rem 2.5rem; text-align: center;">
+    <div style="font-size: 3.5rem; margin-bottom: 1rem;">📖</div>
+    <h1 style="font-size: 2rem; margin-bottom: 0.75rem;">Seite nicht gefunden</h1>
+    <p style="margin-bottom: 2rem;">
+        Diese Seite existiert nicht (mehr) oder wurde verschoben. Vielleicht wurde das gesuchte Buch bereits getauscht?
+    </p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">Zurück zur Startseite</a>
+</div>
+{% endblock %}

@@ -118,6 +118,14 @@ def handle_rate_limit(error):
     flash('Zu viele Versuche. Bitte warte kurz und versuche es dann erneut.', 'error')
     return redirect(request.referrer or url_for('login')), 429
 
+@app.errorhandler(404)
+def not_found(error):
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    return render_template('500.html'), 500
+
 # Ensure upload directory exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 

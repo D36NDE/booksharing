@@ -63,12 +63,14 @@
         <div class="grid" style="margin-top: 1rem;">
             {% for book in books %}
             <div class="card glass" style="display: flex; flex-direction: column;">
-                {% if book.image_filename %}
                 <a href="{{ url_for('book_detail', book_id=book.id) }}">
+                    {% if book.image_filename %}
                     <img src="{{ url_for('static', filename='uploads/' + book.image_filename) }}"
                         alt="Bild von {{ book.title }}" class="book-image">
+                    {% else %}
+                    <div class="book-image-placeholder">Kein Coverbild vorhanden</div>
+                    {% endif %}
                 </a>
-                {% endif %}
                 <h3>
                     <a href="{{ url_for('book_detail', book_id=book.id) }}" style="text-decoration: none; color: inherit;">
                         {{ book.title }}

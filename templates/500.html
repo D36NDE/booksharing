@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+
+{% block title %}Ein Fehler ist aufgetreten - BookSharing{% endblock %}
+
+{% block meta %}
+<meta name="robots" content="noindex, follow">
+{% endblock %}
+
+{% block content %}
+<div class="glass" style="max-width: 560px; margin: 4rem auto; padding: 3rem 2.5rem; text-align: center;">
+    <div style="font-size: 3.5rem; margin-bottom: 1rem;">⚠️</div>
+    <h1 style="font-size: 2rem; margin-bottom: 0.75rem;">Da ist etwas schiefgelaufen</h1>
+    <p style="margin-bottom: 2rem;">
+        Auf unserer Seite ist ein unerwarteter Fehler aufgetreten. Bitte versuche es gleich noch einmal.
+    </p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">Zurück zur Startseite</a>
+</div>
+{% endblock %}
