@@ -23,15 +23,16 @@
     </div>
 
     <form method="POST" action="{{ url_for('request_book', book_id=target_book.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">
             <label for="offered_book_id">Welches Buch möchtest du im Gegenzug anbieten?</label>
             <select id="offered_book_id" name="offered_book_id" required>
                 <option value="" disabled selected>-- Bitte wähle ein Buch --</option>
-                {% for book in my_books %}
+                {% for book in available_books %}
                 <option value="{{ book.id }}">{{ book.title }} ({{ book.condition }})</option>
                 {% endfor %}
             </select>
-            {% if not my_books %}
+            {% if not available_books %}
             <p style="color: var(--error); margin-top: 0.5rem; font-size: 0.875rem;">Du musst zuerst ein eigenes Buch
                 hinzufügen, bevor du tauschen kannst!</p>
             {% endif %}
@@ -39,7 +40,7 @@
 
         <div class="button-group">
             <a href="{{ url_for('index') }}" class="btn btn-secondary" style="flex: 1;">Abbrechen</a>
-            <button type="submit" class="btn btn-primary" style="flex: 1;" {% if not my_books %}disabled{% endif
+            <button type="submit" class="btn btn-primary" style="flex: 1;" {% if not available_books %}disabled{% endif
                 %}>Anfrage senden</button>
         </div>
     </form>

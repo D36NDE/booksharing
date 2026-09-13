@@ -10,8 +10,13 @@ path = '/home/<dein-username>/BookSharing'
 if path not in sys.path:
     sys.path.insert(0, path)
 
-# Optional: Umgebungsvariablen setzen (z. B. fuer den Flask Secret Key)
-os.environ['SECRET_KEY'] = 'dein_sicherer_zufaelliger_schluessel_hier'
+# WICHTIG: SECRET_KEY NICHT hier im Code hinterlegen (landet sonst im Git-Repo)!
+# Setze ihn stattdessen als Umgebungsvariable auf PythonAnywhere:
+# Web-Tab -> "Environment variables" -> SECRET_KEY = <zufaelliger, langer String>
+# Einen zufaelligen Wert kannst du z. B. lokal erzeugen mit:
+#   python -c "import secrets; print(secrets.token_hex(32))"
+# Ohne gesetzte Variable startet die App zwar (siehe app.py), aber alle
+# Sessions gehen bei jedem Neustart/Reload verloren.
 
 # Flask-App importieren. PythonAnywhere erwartet ein Objekt namens "application"
 from app import app as application

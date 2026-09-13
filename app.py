@@ -1,12 +1,40 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, g, Response, abort
-from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
-import database
+import logging
 import os
+import re
+import secrets
 import uuid
 
+from flask import Flask, render_template, request, redirect, url_for, session, flash, g, Response, abort
+from flask_wtf import CSRFProtect
+from flask_wtf.csrf import CSRFError
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from PIL import Image
+from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
+
+import database
+
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'super_secret_dev_key_for_booksharing')
+
+_secret_key = os.environ.get('SECRET_KEY')
+if not _secret_key:
+    # Kein fest codierter Fallback: Ohne SECRET_KEY-Env-Var wird pro Prozessstart
+    # ein zufälliger Schlüssel erzeugt. Das invalidiert bestehende Sessions bei
+    # jedem Neustart, verhindert aber gefälschte/entschlüsselbare Cookies.
+    _secret_key = secrets.token_hex(32)
+    logging.getLogger(__name__).warning(
+        'SECRET_KEY ist nicht gesetzt! Es wird ein zufälliger, temporärer Schlüssel '
+        'verwendet - alle Sessions gehen beim nächsten Neustart verloren. '
+        'Für den Produktivbetrieb bitte die Umgebungsvariable SECRET_KEY setzen.'
+    )
+app.secret_key = _secret_key
+
+# --- CSRF-Schutz ---
+csrf = CSRFProtect(app)
+
+# --- Rate-Limiting (Brute-Force-Schutz z.B. beim Login) ---
+limiter = Limiter(get_remote_address, app=app, default_limits=['200 per day', '50 per hour'])
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static/uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
@@ -22,6 +50,19 @@ BOOK_GENRES = (
     'Sonstiges'
 )
 
+# --- Status-Konstanten (statt verstreuter Magic Strings) ---
+BOOK_AVAILABLE = 'AVAILABLE'
+BOOK_PENDING = 'PENDING'
+BOOK_EXCHANGED = 'EXCHANGED'
+
+REQUEST_PENDING = 'PENDING'
+REQUEST_ACCEPTED = 'ACCEPTED'
+REQUEST_REJECTED = 'REJECTED'
+REQUEST_CANCELLED = 'CANCELLED'
+
+BOOKS_PER_PAGE = 12
+EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+
 # Ensure database schema is migrated
 with app.app_context():
     _migration_conn = database.get_db_connection()
@@ -35,6 +76,24 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def validate_image_file(file_storage):
+    """Prüft anhand des tatsächlichen Dateiinhalts (nicht nur der Endung), ob
+    es sich um ein valides Bild handelt. Setzt den Stream danach zurück, damit
+    er anschließend noch mit .save() geschrieben werden kann."""
+    try:
+        file_storage.stream.seek(0)
+        img = Image.open(file_storage.stream)
+        img.verify()
+        return True
+    except Exception:
+        # PIL kann bei kaputten/manipulierten Dateien diverse Fehlertypen werfen
+        # (UnidentifiedImageError, OSError, SyntaxError, struct.error, ...).
+        # Sicherheitshalber gilt: alles, was sich nicht sauber verifizieren
+        # lässt, wird als ungültiges Bild abgelehnt statt einen 500er zu werfen.
+        return False
+    finally:
+        file_storage.stream.seek(0)
+
 def delete_book_image(filename):
     if filename:
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -42,12 +101,22 @@ def delete_book_image(filename):
             try:
                 os.remove(filepath)
             except OSError:
-                pass
+                app.logger.warning('Konnte Bilddatei nicht löschen: %s', filepath, exc_info=True)
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
     flash('Das hochgeladene Bild ist zu groß. Bitte wähle ein Bild unter 32 MB.', 'error')
     return redirect(request.referrer or url_for('my_books')), 413
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(error):
+    flash('Deine Sitzung ist abgelaufen oder das Formular war ungültig. Bitte versuche es erneut.', 'error')
+    return redirect(request.referrer or url_for('index')), 400
+
+@app.errorhandler(429)
+def handle_rate_limit(error):
+    flash('Zu viele Versuche. Bitte warte kurz und versuche es dann erneut.', 'error')
+    return redirect(request.referrer or url_for('login')), 429
 
 # Ensure upload directory exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -64,8 +133,8 @@ def before_request():
                 SELECT COUNT(*) as count
                 FROM exchange_requests er
                 JOIN books tb ON er.target_book_id = tb.id
-                WHERE tb.owner_id = ? AND er.status = 'PENDING'
-            ''', (user['id'],)).fetchone()
+                WHERE tb.owner_id = ? AND er.status = ?
+            ''', (user['id'], REQUEST_PENDING)).fetchone()
             g.pending_requests_count = pending_count['count'] if pending_count else 0
         else:
             session.pop('user_id', None)
@@ -83,48 +152,61 @@ def teardown_request(exception):
 
 # --- Auth Routes ---
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit('10 per minute')
 def login():
     if g.user:
         return redirect(url_for('index'))
 
     next_url = request.args.get('next') or request.form.get('next')
-        
+
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        
+
         user = g.db.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
         if user and check_password_hash(user['password'], password):
             session['user_id'] = user['id']
             return redirect(next_url or url_for('index'))
         flash('Falscher Benutzername oder Passwort.', 'error')
-            
+
     return render_template('login.html', next_url=next_url)
 
 @app.route('/register', methods=['GET', 'POST'])
+@limiter.limit('10 per hour')
 def register():
     if g.user:
         return redirect(url_for('index'))
-        
+
     if request.method == 'POST':
-        username = request.form.get('username')
-        email = request.form.get('email')
-        password = request.form.get('password')
-        
-        if not email:
-            flash('Bitte gib eine E-Mail Adresse für die Registrierung an.', 'error')
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+
+        if not username or not email or not password:
+            flash('Bitte fülle alle Felder aus.', 'error')
             return render_template('register.html')
-            
+
+        if not EMAIL_RE.match(email):
+            flash('Bitte gib eine gültige E-Mail-Adresse an.', 'error')
+            return render_template('register.html')
+
+        if len(password) < 8:
+            flash('Das Passwort muss mindestens 8 Zeichen lang sein.', 'error')
+            return render_template('register.html')
+
         user = g.db.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+        existing_email = g.db.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
         if user:
             flash('Benutzername existiert bereits.', 'error')
+        elif existing_email:
+            flash('Für diese E-Mail-Adresse existiert bereits ein Konto.', 'error')
         else:
             hashed = generate_password_hash(password, method='pbkdf2:sha256')
             g.db.execute('INSERT INTO users (username, email, password) VALUES (?, ?, ?)', (username, email, hashed))
             g.db.commit()
             flash('Erfolgreich registriert. Du kannst dich jetzt einloggen!', 'success')
             return redirect(url_for('login'))
-            
+
     return render_template('register.html')
 
 
@@ -139,37 +221,50 @@ def index():
     q = request.args.get('q', '').strip()
     condition = request.args.get('condition', '').strip()
     genre = request.args.get('genre', '').strip()
+    try:
+        page = max(1, int(request.args.get('page', 1)))
+    except ValueError:
+        page = 1
 
-    sql = '''
-        SELECT b.id, b.title, b.author, b.condition, b.genre, b.description, b.image_filename, u.username as owner_name 
-        FROM books b 
-        JOIN users u ON b.owner_id = u.id 
-        WHERE b.status = 'AVAILABLE'
+    base_sql = '''
+        FROM books b
+        JOIN users u ON b.owner_id = u.id
+        WHERE b.status = ?
     '''
-    params = []
+    params = [BOOK_AVAILABLE]
 
     if g.user:
-        sql += ' AND b.owner_id != ?'
+        base_sql += ' AND b.owner_id != ?'
         params.append(g.user['id'])
 
     if q:
-        sql += ' AND (b.title LIKE ? OR b.author LIKE ? OR u.username LIKE ? OR b.description LIKE ?)'
+        base_sql += ' AND (b.title LIKE ? OR b.author LIKE ? OR u.username LIKE ? OR b.description LIKE ?)'
         search_pattern = f'%{q}%'
         params.extend([search_pattern, search_pattern, search_pattern, search_pattern])
 
     if condition:
-        sql += ' AND b.condition = ?'
+        base_sql += ' AND b.condition = ?'
         params.append(condition)
 
     if genre:
-        sql += ' AND b.genre = ?'
+        base_sql += ' AND b.genre = ?'
         params.append(genre)
 
-    sql += ' ORDER BY b.id DESC'
+    total_count = g.db.execute(f'SELECT COUNT(*) as count {base_sql}', params).fetchone()['count']
+    total_pages = max(1, (total_count + BOOKS_PER_PAGE - 1) // BOOKS_PER_PAGE)
+    page = min(page, total_pages)
+    offset = (page - 1) * BOOKS_PER_PAGE
 
-    books = g.db.execute(sql, params).fetchall()
-    
-    return render_template('index.html', books=books, q=q, condition=condition, genre=genre, genres=BOOK_GENRES)
+    list_sql = f'''
+        SELECT b.id, b.title, b.author, b.condition, b.genre, b.description, b.image_filename, u.username as owner_name
+        {base_sql}
+        ORDER BY b.id DESC
+        LIMIT ? OFFSET ?
+    '''
+    books = g.db.execute(list_sql, params + [BOOKS_PER_PAGE, offset]).fetchall()
+
+    return render_template('index.html', books=books, q=q, condition=condition, genre=genre, genres=BOOK_GENRES,
+                            page=page, total_pages=total_pages, total_count=total_count)
 
 @app.route('/my-books', methods=['GET', 'POST'])
 def my_books():
@@ -184,23 +279,26 @@ def my_books():
         genre = request.form.get('genre', 'Sonstiges').strip() or 'Sonstiges'
         description = request.form.get('description', '').strip() or None
         
+        if not (title and author and condition):
+            flash('Bitte alle Pflichtfelder (Titel, Autor, Zustand) ausfüllen.', 'error')
+            return redirect(url_for('my_books'))
+
         image_filename = None
         if 'image' in request.files:
             file = request.files['image']
-            if file and file.filename != '' and allowed_file(file.filename):
+            if file and file.filename != '':
+                if not allowed_file(file.filename) or not validate_image_file(file):
+                    flash('Die hochgeladene Datei ist kein gültiges Bild (erlaubt: PNG, JPG, GIF, WEBP).', 'error')
+                    return redirect(url_for('my_books'))
                 filename = secure_filename(file.filename)
                 unique_filename = f"{uuid.uuid4().hex}_{filename}"
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
                 image_filename = unique_filename
-        
-        if title and author and condition:
-            g.db.execute('INSERT INTO books (title, author, condition, genre, description, owner_id, image_filename) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                         (title, author, condition, genre, description, g.user['id'], image_filename))
-            g.db.commit()
-            flash('Buch erfolgreich hinzugefügt!', 'success')
-        else:
-            flash('Bitte alle Pflichtfelder (Titel, Autor, Zustand) ausfüllen.', 'error')
-            
+
+        g.db.execute('INSERT INTO books (title, author, condition, genre, description, owner_id, image_filename) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                     (title, author, condition, genre, description, g.user['id'], image_filename))
+        g.db.commit()
+        flash('Buch erfolgreich hinzugefügt!', 'success')
         return redirect(url_for('my_books'))
         
     books = g.db.execute('SELECT * FROM books WHERE owner_id = ? ORDER BY id DESC', (g.user['id'],)).fetchall()
@@ -243,7 +341,10 @@ def edit_book(book_id):
         # Handle uploading a new image
         if 'image' in request.files:
             file = request.files['image']
-            if file and file.filename != '' and allowed_file(file.filename):
+            if file and file.filename != '':
+                if not allowed_file(file.filename) or not validate_image_file(file):
+                    flash('Die hochgeladene Datei ist kein gültiges Bild (erlaubt: PNG, JPG, GIF, WEBP).', 'error')
+                    return render_template('edit_book.html', book=book, genres=BOOK_GENRES)
                 if image_filename:
                     delete_book_image(image_filename)
                 filename = secure_filename(file.filename)
@@ -276,7 +377,7 @@ def delete_book(book_id):
         flash('Du bist nicht berechtigt, dieses Buch zu löschen.', 'error')
         return redirect(url_for('my_books'))
 
-    if book['status'] == 'PENDING':
+    if book['status'] == BOOK_PENDING:
         flash('Dieses Buch ist aktuell Teil einer laufenden Tauschanfrage und kann nicht gelöscht werden.', 'error')
         return redirect(url_for('my_books'))
 
@@ -299,19 +400,19 @@ def request_book(book_id):
         return redirect(url_for('login'))
         
     # Check if book exists and is available
-    target_book = g.db.execute('SELECT * FROM books WHERE id = ? AND status = "AVAILABLE"', (book_id,)).fetchone()
+    target_book = g.db.execute('SELECT * FROM books WHERE id = ? AND status = ?', (book_id, BOOK_AVAILABLE)).fetchone()
     if not target_book:
         flash('Dieses Buch ist nicht verfügbar.', 'error')
         return redirect(url_for('index'))
-        
+
     if target_book['owner_id'] == g.user['id']:
         flash('Du kannst nicht dein eigenes Buch anfragen.', 'error')
         return redirect(url_for('index'))
 
     # Check if user already has an active pending request for this target book
     existing_req = g.db.execute(
-        'SELECT id FROM exchange_requests WHERE requester_id = ? AND target_book_id = ? AND status = "PENDING"',
-        (g.user['id'], book_id)
+        'SELECT id FROM exchange_requests WHERE requester_id = ? AND target_book_id = ? AND status = ?',
+        (g.user['id'], book_id, REQUEST_PENDING)
     ).fetchone()
     if existing_req:
         flash('Du hast für dieses Buch bereits eine offene Tauschanfrage gestellt.', 'info')
@@ -321,22 +422,21 @@ def request_book(book_id):
         offered_book_id = request.form.get('offered_book_id')
         if offered_book_id:
             # Check if user owns the offered book and it's available
-            offered_book = g.db.execute('SELECT * FROM books WHERE id = ? AND owner_id = ? AND status = "AVAILABLE"',
-                                        (offered_book_id, g.user['id'])).fetchone()
+            offered_book = g.db.execute('SELECT * FROM books WHERE id = ? AND owner_id = ? AND status = ?',
+                                        (offered_book_id, g.user['id'], BOOK_AVAILABLE)).fetchone()
             if not offered_book:
                 flash('Ungültiges Buch angeboten oder nicht mehr verfügbar.', 'error')
             else:
                 g.db.execute('INSERT INTO exchange_requests (requester_id, target_book_id, offered_book_id) VALUES (?, ?, ?)',
                              (g.user['id'], book_id, offered_book_id))
-                # Mark both books as 'PENDING'
-                g.db.execute('UPDATE books SET status = "PENDING" WHERE id IN (?, ?)', (book_id, offered_book_id))
+                g.db.execute('UPDATE books SET status = ? WHERE id IN (?, ?)', (BOOK_PENDING, book_id, offered_book_id))
                 g.db.commit()
                 flash('Tauschanfrage erfolgreich gesendet!', 'success')
                 return redirect(url_for('requests_page'))
-                
+
     # Get user's available books to offer
-    my_books = g.db.execute('SELECT * FROM books WHERE owner_id = ? AND status = "AVAILABLE"', (g.user['id'],)).fetchall()
-    return render_template('request_form.html', target_book=target_book, my_books=my_books)
+    available_books = g.db.execute('SELECT * FROM books WHERE owner_id = ? AND status = ?', (g.user['id'], BOOK_AVAILABLE)).fetchall()
+    return render_template('request_form.html', target_book=target_book, available_books=available_books)
 
 @app.route('/requests', methods=['GET', 'POST'])
 def requests_page():
@@ -354,45 +454,76 @@ def requests_page():
             JOIN books ob ON er.offered_book_id = ob.id
             WHERE er.id = ?
         ''', (req_id,)).fetchone()
-        
-        if req and req['status'] == 'PENDING':
-            # Case A: Target owner accepts the request
-            if action == 'accept' and req['target_owner_id'] == g.user['id']:
-                g.db.execute('UPDATE exchange_requests SET status = "ACCEPTED" WHERE id = ?', (req_id,))
-                g.db.execute('UPDATE books SET status = "EXCHANGED" WHERE id IN (?, ?)', (req['t_id'], req['o_id']))
-                
-                # Auto-reject competing pending requests and release their books
-                competing_reqs = g.db.execute('''
-                    SELECT id, target_book_id, offered_book_id
-                    FROM exchange_requests
-                    WHERE id != ? AND status = 'PENDING'
-                      AND (target_book_id IN (?, ?) OR offered_book_id IN (?, ?))
-                ''', (req_id, req['t_id'], req['o_id'], req['t_id'], req['o_id'])).fetchall()
 
-                for c_req in competing_reqs:
-                    g.db.execute('UPDATE exchange_requests SET status = "REJECTED" WHERE id = ?', (c_req['id'],))
-                    if c_req['offered_book_id'] not in (req['t_id'], req['o_id']):
-                        g.db.execute('UPDATE books SET status = "AVAILABLE" WHERE id = ?', (c_req['offered_book_id'],))
-                    if c_req['target_book_id'] not in (req['t_id'], req['o_id']):
-                        g.db.execute('UPDATE books SET status = "AVAILABLE" WHERE id = ?', (c_req['target_book_id'],))
+        if not req:
+            flash('Tauschanfrage nicht gefunden.', 'error')
+            return redirect(url_for('requests_page'))
 
-                g.db.commit()
-                flash('Tauschanfrage akzeptiert! Die Kontaktdaten wurden freigeschaltet.', 'success')
-                
-            # Case B: Target owner rejects the request
-            elif action == 'reject' and req['target_owner_id'] == g.user['id']:
-                g.db.execute('UPDATE exchange_requests SET status = "REJECTED" WHERE id = ?', (req_id,))
-                g.db.execute('UPDATE books SET status = "AVAILABLE" WHERE id IN (?, ?)', (req['t_id'], req['o_id']))
-                g.db.commit()
-                flash('Anfrage abgelehnt. Beide Bücher sind wieder verfügbar.', 'info')
+        # Jede Aktion beansprucht die Anfrage zunächst atomar per
+        # "UPDATE ... WHERE status = PENDING" - das verhindert, dass zwei
+        # parallele Requests (z.B. zwei offene Tabs) dieselbe Anfrage doppelt
+        # verarbeiten (TOCTOU-Schutz statt reinem Vorab-SELECT).
 
-            # Case C: Requester cancels their own pending request
-            elif action == 'cancel' and req['requester_id'] == g.user['id']:
-                g.db.execute('UPDATE exchange_requests SET status = "CANCELLED" WHERE id = ?', (req_id,))
-                g.db.execute('UPDATE books SET status = "AVAILABLE" WHERE id IN (?, ?)', (req['t_id'], req['o_id']))
-                g.db.commit()
-                flash('Tauschanfrage erfolgreich zurückgezogen. Beide Bücher stehen wieder zur Verfügung.', 'success')
-                
+        # Case A: Target owner accepts the request
+        if action == 'accept' and req['target_owner_id'] == g.user['id']:
+            claimed = g.db.execute(
+                'UPDATE exchange_requests SET status = ? WHERE id = ? AND status = ?',
+                (REQUEST_ACCEPTED, req_id, REQUEST_PENDING)
+            ).rowcount
+            if not claimed:
+                g.db.rollback()
+                flash('Diese Anfrage wurde bereits bearbeitet.', 'info')
+                return redirect(url_for('requests_page'))
+
+            g.db.execute('UPDATE books SET status = ? WHERE id IN (?, ?)', (BOOK_EXCHANGED, req['t_id'], req['o_id']))
+
+            # Auto-reject competing pending requests and release their books
+            competing_reqs = g.db.execute('''
+                SELECT id, target_book_id, offered_book_id
+                FROM exchange_requests
+                WHERE id != ? AND status = ?
+                  AND (target_book_id IN (?, ?) OR offered_book_id IN (?, ?))
+            ''', (req_id, REQUEST_PENDING, req['t_id'], req['o_id'], req['t_id'], req['o_id'])).fetchall()
+
+            for c_req in competing_reqs:
+                g.db.execute('UPDATE exchange_requests SET status = ? WHERE id = ? AND status = ?',
+                             (REQUEST_REJECTED, c_req['id'], REQUEST_PENDING))
+                if c_req['offered_book_id'] not in (req['t_id'], req['o_id']):
+                    g.db.execute('UPDATE books SET status = ? WHERE id = ?', (BOOK_AVAILABLE, c_req['offered_book_id']))
+                if c_req['target_book_id'] not in (req['t_id'], req['o_id']):
+                    g.db.execute('UPDATE books SET status = ? WHERE id = ?', (BOOK_AVAILABLE, c_req['target_book_id']))
+
+            g.db.commit()
+            flash('Tauschanfrage akzeptiert! Die Kontaktdaten wurden freigeschaltet.', 'success')
+
+        # Case B: Target owner rejects the request
+        elif action == 'reject' and req['target_owner_id'] == g.user['id']:
+            claimed = g.db.execute(
+                'UPDATE exchange_requests SET status = ? WHERE id = ? AND status = ?',
+                (REQUEST_REJECTED, req_id, REQUEST_PENDING)
+            ).rowcount
+            if not claimed:
+                g.db.rollback()
+                flash('Diese Anfrage wurde bereits bearbeitet.', 'info')
+                return redirect(url_for('requests_page'))
+            g.db.execute('UPDATE books SET status = ? WHERE id IN (?, ?)', (BOOK_AVAILABLE, req['t_id'], req['o_id']))
+            g.db.commit()
+            flash('Anfrage abgelehnt. Beide Bücher sind wieder verfügbar.', 'info')
+
+        # Case C: Requester cancels their own pending request
+        elif action == 'cancel' and req['requester_id'] == g.user['id']:
+            claimed = g.db.execute(
+                'UPDATE exchange_requests SET status = ? WHERE id = ? AND status = ?',
+                (REQUEST_CANCELLED, req_id, REQUEST_PENDING)
+            ).rowcount
+            if not claimed:
+                g.db.rollback()
+                flash('Diese Anfrage wurde bereits bearbeitet.', 'info')
+                return redirect(url_for('requests_page'))
+            g.db.execute('UPDATE books SET status = ? WHERE id IN (?, ?)', (BOOK_AVAILABLE, req['t_id'], req['o_id']))
+            g.db.commit()
+            flash('Tauschanfrage erfolgreich zurückgezogen. Beide Bücher stehen wieder zur Verfügung.', 'success')
+
         return redirect(url_for('requests_page'))
 
     incoming_requests = g.db.execute('''
@@ -461,7 +592,7 @@ def sitemap():
         {'loc': url_for('register', _external=True), 'changefreq': 'monthly', 'priority': '0.5'}
     ]
     
-    available_books = g.db.execute("SELECT id FROM books WHERE status = 'AVAILABLE'").fetchall()
+    available_books = g.db.execute('SELECT id FROM books WHERE status = ?', (BOOK_AVAILABLE,)).fetchall()
     for book in available_books:
         pages.append({
             'loc': url_for('book_detail', book_id=book['id'], _external=True),
