@@ -21,6 +21,21 @@ def check_and_migrate_db(conn):
             cursor.execute("ALTER TABLE books ADD COLUMN description TEXT")
         conn.commit()
 
+    # Neue Tabellen, die bei init_db() schon über CREATE TABLE IF NOT EXISTS
+    # entstehen, müssen hier zusätzlich erstellt werden, da bei bestehenden
+    # Deployments nur check_and_migrate_db() beim App-Start läuft, nicht init_db().
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            token_hash TEXT UNIQUE NOT NULL,
+            expires_at TEXT NOT NULL,
+            used INTEGER DEFAULT 0,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+    conn.commit()
+
     create_indexes(conn)
 
     # Best-effort: verhindert neue Accounts mit doppelter E-Mail, ohne bei
@@ -43,6 +58,7 @@ def create_indexes(conn):
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_exchange_target_book_id ON exchange_requests (target_book_id)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_exchange_offered_book_id ON exchange_requests (offered_book_id)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_exchange_status ON exchange_requests (status)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_reset_tokens_user_id ON password_reset_tokens (user_id)')
     conn.commit()
 
 def init_db():
@@ -86,6 +102,18 @@ def init_db():
             FOREIGN KEY (requester_id) REFERENCES users (id),
             FOREIGN KEY (target_book_id) REFERENCES books (id),
             FOREIGN KEY (offered_book_id) REFERENCES books (id)
+        )
+    ''')
+
+    # Password-Reset-Tokens
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            token_hash TEXT UNIQUE NOT NULL,
+            expires_at TEXT NOT NULL,
+            used INTEGER DEFAULT 0,
+            FOREIGN KEY (user_id) REFERENCES users (id)
         )
     ''')
 
